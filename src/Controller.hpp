@@ -2,7 +2,6 @@
 #include"Disk.hpp"
 #include<vector>
 using namespace std;
-//lh
 
 class Controller{
     public:
