@@ -3,7 +3,7 @@
 
 //理解为文件
 class Object{
-    int id;//对象id,从1开始,唯一
+    int id;//对象id,从0开始,唯一
     int size;//对象大小,数量是几就代表要分成几个对象块
     int tag;
     int num_copy=3;
