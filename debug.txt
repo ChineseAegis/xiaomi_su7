@@ -1,0 +1,132 @@
+[interactor]
+5 2 3 10 100 
+0 
+2 
+3 
+2 
+6 
+4 
+[player]
+OK 
+[interactor]
+TIMESTAMP 1 
+[player]
+TIMESTAMP 1 
+[interactor]
+0 
+[player]
+0 
+[interactor]
+3 
+1 1 1 
+2 2 2 
+3 2 1 
+[player]
+1 
+3 1 
+1 1 
+2 1 
+2 
+1 2 3 
+2 2 3 
+3 2 3 
+3 
+2 4 5 
+3 4 5 
+1 4 5 
+[interactor]
+1 
+1 1 
+[player]
+# 
+# 
+j 1 
+[debug]
+Disk head position: [1]1 [2]1 [3]1 
+[player]
+0 
+[interactor]
+TIMESTAMP 2 
+[player]
+TIMESTAMP 2 
+[interactor]
+0 
+[player]
+0 
+[interactor]
+0 
+3 
+2 1 
+3 2 
+4 3 
+[player]
+# 
+# 
+r# 
+[debug]
+Disk head position: [1]1 [2]1 [3]2 
+[player]
+1 
+1 
+[interactor]
+TIMESTAMP 3 
+[player]
+TIMESTAMP 3 
+[interactor]
+0 
+[player]
+0 
+[interactor]
+0 
+2 
+5 3 
+6 2 
+[player]
+j 2 
+# 
+# 
+[debug]
+Disk head position: [1]2 [2]1 [3]2 
+[player]
+0 
+[interactor]
+TIMESTAMP 4 
+[player]
+TIMESTAMP 4 
+[interactor]
+1 
+2 
+[player]
+2 
+6 
+3 
+[interactor]
+0 
+0 
+[player]
+r# 
+# 
+# 
+[debug]
+Disk head position: [1]3 [2]1 [3]2 
+[player]
+0 
+[interactor]
+TIMESTAMP 5 
+[player]
+TIMESTAMP 5 
+[interactor]
+0 
+[player]
+0 
+[interactor]
+0 
+0 
+[player]
+j 3 
+# 
+# 
+[debug]
+Disk head position: [1]3 [2]1 [3]2 
+[player]
+0 

@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.lua": "xmake",
+        "iostream": "cpp"
+    }
+}

@@ -1,0 +1,6 @@
+[
+{
+  "directory": "/home/ubuntu/Project/2025软件精英/lh",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-DNDEBUG", "-o", "build/.objs/2025/linux/x86_64/release/src/main.cpp.o", "src/main.cpp"],
+  "file": "src/main.cpp"
+}]
