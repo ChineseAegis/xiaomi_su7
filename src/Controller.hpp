@@ -112,6 +112,7 @@ public:
     int current_time = 0; // 当前时间片
     vector<Disk> disks;   // 存储硬盘的数组
 
+    //记录每个阶段的该类指令涉及的块总大小
     vector<int> num_delete_operation;
     vector<int> num_write_operation;
     vector<int> num_read_operation;
@@ -227,19 +228,13 @@ public:
             scanf("%d%d", &request_id, &object_id);
         }
 
-        static int current_request = 0;
-        static int current_phase = 0;
-        if (!current_request && n_read > 0)
-        {
-            current_request = request_id;
-        }
-        if (!current_request)
-        {
-            for (int i = 1; i <= num_disk; i++)
-            {
-                printf("#\n");
-            }
-            printf("0\n");
+        //输出动作
+        for(int i=0;i<disk_actions.size();i++){
+            vector<string> actions=disk_actions[i].get_actions();
+            string s=actions[current_time];
+            s+="#";
+            const char *output=s.c_str();
+            printf("%s\n",output);
         }
 
         fflush(stdout);
@@ -247,5 +242,9 @@ public:
 
     void run()
     {
+        timestamp_action();
+        delete_action();
+        write_action();
+        read_action();
     }
 };
