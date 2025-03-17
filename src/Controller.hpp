@@ -2,11 +2,11 @@
 #include "Disk.hpp"
 #include <vector>
 #include "Object.hpp"
-#include<queue>
-#include<string>
-#include<list>
-#include<deque>
-#include"Strategy.hpp"
+#include <queue>
+#include <string>
+#include <list>
+#include <deque>
+#include "Strategy.hpp"
 
 using namespace std;
 
@@ -18,95 +18,109 @@ using namespace std;
 #define FRE_PER_SLICING (1800)
 #define EXTRA_TIME (105)
 
-//表示一个硬盘规划的未来若干个时间片的动作序列
-class Action
+// 表示一个硬盘规划的未来若干个时间片的动作序列
+class Action_queue
 {
-    deque<string> _actions;//
-    deque<int> _tokens;//已经消耗的token
+    vector<string> _actions; //
+    vector<int> _tokens;     // 已经消耗的token
+    int G;
 
-    public:
-    Action(int num_T)
+public:
+    Action_queue(int num_T, int G)
     {
         _actions.resize(num_T);
-        _tokens.resize(num_T,0);
+        _tokens.resize(num_T, 0);
     }
-    deque<string> get_actions(){
+
+    vector<string> &get_actions()
+    {
         return _actions;
     }
 
-    string get_time_action(int current_time,int time)
+    // 返回指定时间片中，硬盘已经规划了的动作所消耗的token数量
+    int get_action_tokens(int time)
     {
-        if(time-current_time<_actions.size()){
-            return _actions[time-current_time];
-        }else{
-            return "";
-        }
-    }
-
-    //返回指定时间片中，硬盘已经规划了的动作所消耗的token数量
-    int get_action_tokens(int current_time,int time){
-        if(time-current_time>=_actions.size())
+        if (time >= _actions.size())
         {
             return -1;
         }
-        return _tokens[time-current_time];
+        return _tokens[time];
     }
 
-    //向该磁盘指定时间片加入pass动作，默认在指定时间片的指令序列的末尾添加，若指定index，则在index处添加
-    bool add_pass_action(int current_time,int time,int index=-1){
-        if(time-current_time>=_actions.size())
+    // 向该磁盘指定时间片加入pass动作，默认在指定时间片的指令序列的末尾添加，若指定index，则在index处添加
+    bool add_pass_action(int time, int index = -1)
+    {
+        if (time >= _actions.size())
         {
             return -1;
         }
-        if(index){
-            _actions[time-current_time].insert(index,1,'p');
-        }else{
-            _actions[time-current_time].append("p");
+        if (index)
+        {
+            _actions[time].insert(index, 1, 'p');
         }
-        _tokens=Strategy::recalculate_tokens(_actions,_tokens,time);
+        else
+        {
+            _actions[time].append("p");
+        }
+        _tokens = Strategy::recalculate_tokens(_actions, _tokens, time, G);
         return true;
     }
-    //向该磁盘指定时间片加入read动作，默认在指定时间片的指令序列的末尾添加，若指定index，则在index处添加
-    bool add_read_action(int current_time,int time,int index=-1){
-        if(time-current_time>=_actions.size())
+    // 向该磁盘指定时间片加入read动作，默认在指定时间片的指令序列的末尾添加，若指定index，则在index处添加
+    bool add_read_action(int time, int index = -1)
+    {
+        if (time >= _actions.size())
         {
             return -1;
         }
-        if(index){
-            _actions[time-current_time].insert(index,1,'r');
-        }else{
-            _actions[time-current_time].append("r");
+        if (index)
+        {
+            _actions[time].insert(index, 1, 'r');
         }
-        _tokens=Strategy::recalculate_tokens(_actions,_tokens,time);
+        else
+        {
+            _actions[time].append("r");
+        }
+        _tokens = Strategy::recalculate_tokens(_actions, _tokens, time, G);
         return true;
     }
 
-    
-
-
+    bool add_jump_action(int time,int distance)
+    {
+        if (time >= _actions.size())
+        {
+            return -1;
+        }
+        if (_actions[time].size() > 0)
+        {
+            return -1;
+        }
+        else
+        {
+            _actions[time]="j "+to_string(distance);
+        }
+    }
 };
 
 class Controller
 {
 public:
-    int num_T;          // 时间片数量
-    int num_disk;       // 磁盘数量 3<=N<=10
-    int num_tag;        // 标签数量
-    int num_v;          // 每个硬盘的单元数量
-    int G;              // 代表每个磁头每个时间片最多消耗的令牌数。输入数据保证64≤𝐺≤1000。
-    int current_time=0; //当前时间片
-    vector<Disk> disks; // 存储硬盘的数组
+    int num_T;            // 时间片数量
+    int num_disk;         // 磁盘数量 3<=N<=10
+    int num_tag;          // 标签数量
+    int num_v;            // 每个硬盘的单元数量
+    int G;                // 代表每个磁头每个时间片最多消耗的令牌数。输入数据保证64≤𝐺≤1000。
+    int current_time = 0; // 当前时间片
+    vector<Disk> disks;   // 存储硬盘的数组
 
     vector<int> num_delete_operation;
     vector<int> num_write_operation;
     vector<int> num_read_operation;
 
-    vector<queue<string>> disk_actions;//硬盘指令队列，总共N个硬盘，就有N个队列，每个元素是一个时间片下所有指令的字符串
-
+    vector<Action_queue> disk_actions; // 硬盘指令队列，总共N个硬盘，就有N个队列，每个元素是一个时间片下所有指令的字符串
 
     Controller()
     {
-        
+
     }
 
     void global_pre_proccess()
@@ -151,7 +165,6 @@ public:
         fflush(stdout);
 
         disk_actions.resize(num_disk);
-
     }
 
     void timestamp_action()
@@ -228,13 +241,11 @@ public:
             }
             printf("0\n");
         }
-        
 
         fflush(stdout);
     }
 
-    
-    void run(){
-
+    void run()
+    {
     }
 };
