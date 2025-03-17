@@ -58,13 +58,17 @@ public:
         if (index)
         {
             _actions[time].insert(index, 1, 'p');
+            _tokens[time]+=1;
+            return true;
         }
         else
         {
             _actions[time].append("p");
+            _tokens = Strategy::recalculate_tokens(_actions, _tokens, time, G);
+            return true;
         }
-        _tokens = Strategy::recalculate_tokens(_actions, _tokens, time, G);
-        return true;
+        
+        
     }
     // 向该磁盘指定时间片加入read动作，默认在指定时间片的指令序列的末尾添加，若指定index，则在index处添加
     bool add_read_action(int time, int index = -1)
@@ -76,13 +80,16 @@ public:
         if (index)
         {
             _actions[time].insert(index, 1, 'r');
+            _tokens = Strategy::recalculate_tokens(_actions, _tokens, time, G, index);
+            return true;
         }
         else
         {
             _actions[time].append("r");
+            _tokens = Strategy::recalculate_tokens(_actions, _tokens, time, G);
+            return true;
         }
-        _tokens = Strategy::recalculate_tokens(_actions, _tokens, time, G);
-        return true;
+        
     }
 
     bool add_jump_action(int time,int distance)
@@ -99,6 +106,7 @@ public:
         {
             _actions[time]="j "+to_string(distance);
         }
+        _tokens[time]=G;
     }
 };
 
