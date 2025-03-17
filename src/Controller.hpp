@@ -7,6 +7,7 @@
 #include <list>
 #include <deque>
 #include "Strategy.hpp"
+#include<unordered_set>
 
 using namespace std;
 
@@ -101,8 +102,14 @@ public:
     }
 };
 
+struct WriteResult{
+    vector<int> id;//每个磁盘的id
+    vector<vector<int>> indexs;//对应每个磁盘中blocks位置的索引
+};
+
 class Controller
 {
+
 public:
     int num_T;            // 时间片数量
     int num_disk;         // 磁盘数量 3<=N<=10
@@ -111,6 +118,7 @@ public:
     int G;                // 代表每个磁头每个时间片最多消耗的令牌数。输入数据保证64≤𝐺≤1000。
     int current_time = 0; // 当前时间片
     vector<Disk> disks;   // 存储硬盘的数组
+    unordered_set<Object,ObjectHash> objects;
 
     //记录每个阶段的该类指令涉及的块总大小
     vector<int> num_delete_operation;
@@ -121,6 +129,14 @@ public:
 
     Controller()
     {
+
+    }
+
+    WriteResult write_object_to_disk(int id,int size,int tag){
+
+    }
+
+    bool write_block_to_disk(int disk_id,int index,int object_id){
 
     }
 
@@ -202,6 +218,7 @@ public:
         {
             int id, size, tag;
             scanf("%d%d%*d", &id, &size, &tag);
+            objects.insert(Object(id,size,tag));
 
             printf("%d\n", id);
             for (int j = 1; j <= REP_NUM; j++)
