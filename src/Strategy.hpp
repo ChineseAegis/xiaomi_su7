@@ -32,6 +32,7 @@ class Strategy
         }
         return count;
     }
+
     static int computeValue(int base, double factor, int times) {
         double result = base;
         for (int i = 0; i < times; i++) {
@@ -90,8 +91,9 @@ public:
     // 输入的 actions 是时间片序列，每个时间片包含一个动作序列
     // tokens 是更新之前记录的每个时间片消耗的 token 数量
     // time 是指定时间片，若未指定，则更新所有时间片的 token
+    // index如果指定，则代表all_actions[time][index]为新增动作，只需根据这个新增动作进行更新
     // 返回值：返回更新后的 tokens
-    static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1)
+    static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1,int index=-1)
     {
         if (time == -1)
         {
@@ -101,12 +103,19 @@ public:
                 tokens[i] = calculate_tokens(all_actions[i], G, all_actions, i);
             }
         }
-        else
+        else if(time&&!index)
         {
             // 更新指定时间片
             if (time >= 0 && time < static_cast<int>(all_actions.size()))
             {
                 tokens[time] = calculate_tokens(all_actions[time], G, all_actions, time);
+            }
+        }else{
+            if(all_actions[time][index]=='p'){
+                tokens[time]+=1;
+            }else if(all_actions[time][index]=='r'){
+                int pre_num_r = calculate_num_pre_read_action(all_actions, time, index);
+                tokens[time] += max(16, computeValue(64,0.8,pre_num_r));
             }
         }
         return tokens;
