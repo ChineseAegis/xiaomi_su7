@@ -32,12 +32,21 @@ class Strategy
         }
         return count;
     }
+    static int computeValue(int base, double factor, int times) {
+        double result = base;
+        for (int i = 0; i < times; i++) {
+            result = std::ceil(result * factor);  // 每次先乘 factor，再取 ceil
+        }
+        return static_cast<int>(result);  // 转换为整数
+    }
+
+
     // 根据行为计算tokens的方式
 
     static int calculate_tokens(const string &actions, int G, const vector<string> &all_actions, int time)
     {
         int token_count = 0;
-        bool has_jed = false; // 标记是否已经执行了j动作
+        int pre_num_r = 0;
 
         if (actions[0] == 'j')
         {
@@ -52,18 +61,20 @@ class Strategy
             if (action == 'p')
             {
                 token_count += 1;
+                pre_num_r = 0;
             }
             else if (action == 'r')
             {
-                int pre_num_r = calculate_num_pre_read_action(all_actions, time, i);
-                // 时间片的第一个r动作
-                if (pre_num_r)
+                if (i == 0)
                 {
-                    token_count += max(16, static_cast<int>(ceil(64 * pow(0.8, pre_num_r))));
+                    pre_num_r = calculate_num_pre_read_action(all_actions, time, i);
+                    token_count += max(16, computeValue(64,0.8,pre_num_r));
+                    pre_num_r++;
                 }
                 else
                 {
-                    token_count += 64;
+                    token_count += max(16, computeValue(64,0.8,pre_num_r));
+                    pre_num_r++;
                 }
             }
             else
@@ -73,8 +84,8 @@ class Strategy
         }
         return token_count;
     }
-    public:
 
+public:
     // 更新对应时间片的token消耗
     // 输入的 actions 是时间片序列，每个时间片包含一个动作序列
     // tokens 是更新之前记录的每个时间片消耗的 token 数量
