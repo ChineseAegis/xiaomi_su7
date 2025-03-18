@@ -1,3 +1,4 @@
+#pragma once
 #include <cmath> // 引入标准库中的 ceil 函数
 using namespace std;
 #include <deque>
@@ -5,8 +6,9 @@ using namespace std;
 #include <vector>
 #include <algorithm> // 用于max函数
 #include <stdexcept>
+#include "Controller.hpp"
 
-class Strategy
+class Calculate
 {
     //计算指定时间片、索引的某个r动作之前有几个r动作。
     static int calculate_num_pre_read_action(const vector<string> &actions, int time, int index);
@@ -26,12 +28,14 @@ public:
     // 返回值：返回更新后的 tokens
     static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1, int index = -1);
 
+    static Action_queue calculate_actions(int head_index,vector<int> read_queue_indexs,int num_v,int G);
+
     
 };
 
 
 
-int Strategy::calculate_num_pre_read_action(const vector<string> &actions, int time, int index)
+int Calculate::calculate_num_pre_read_action(const vector<string> &actions, int time, int index)
 {
     int count = 0;
     for (int j = time; j >= 0; j--)
@@ -55,7 +59,7 @@ int Strategy::calculate_num_pre_read_action(const vector<string> &actions, int t
     return count;
 }
 
-int Strategy::computeValue(int base, double factor, int times)
+int Calculate::computeValue(int base, double factor, int times)
 {
     double result = base;
     for (int i = 0; i < times; i++)
@@ -65,7 +69,7 @@ int Strategy::computeValue(int base, double factor, int times)
     return static_cast<int>(result); // 转换为整数
 }
 
-int Strategy::calculate_tokens(const string &actions, int G, const vector<string> &all_actions, int time)
+int Calculate::calculate_tokens(const string &actions, int G, const vector<string> &all_actions, int time)
 {
     int token_count = 0;
     int pre_num_r = 0;
@@ -107,7 +111,7 @@ int Strategy::calculate_tokens(const string &actions, int G, const vector<string
     return token_count;
 }
 
-vector<int> Strategy::recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1, int index = -1)
+vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1, int index = -1)
 {
     if (time == -1)
     {
