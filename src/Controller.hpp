@@ -8,7 +8,7 @@
 #include <list>
 #include <deque>
 #include "Strategy.hpp"
-#include <unordered_set>
+#include <unordered_map>
 
 using namespace std;
 
@@ -20,7 +20,7 @@ using namespace std;
 #define FRE_PER_SLICING (1800)
 #define EXTRA_TIME (105)
 
-// 表示一个硬盘规划的未来若干个时间片的动作序列
+// 表示一个硬盘所有时间片的动作序列
 class Action_queue
 {
     vector<string> _actions; //
@@ -34,7 +34,8 @@ public:
         _tokens.resize(num_T, 0);
     }
 
-    vector<string> &get_actions()
+    //返回所有时间片的动作序列，注意是引用
+    vector<string>& get_actions()
     {
         return _actions;
     }
@@ -55,8 +56,8 @@ struct WriteResult
 {
     vector<int> id;             // 每个磁盘的id
     vector<vector<int>> indexs; // 对应每个磁盘中blocks位置的索引
-    WriteResult(vector<int> id,vector<vector<int>> indexs):id(id),indexs(indexs){
-
+    WriteResult(vector<int> id, vector<vector<int>> indexs) : id(id), indexs(indexs)
+    {
     }
 };
 
@@ -71,7 +72,7 @@ public:
     int G;                // 代表每个磁头每个时间片最多消耗的令牌数。输入数据保证64≤𝐺≤1000。
     int current_time = 0; // 当前时间片
     vector<Disk> disks;   // 存储硬盘的数组
-    unordered_set<Object, ObjectHash> objects;
+    unordered_map<int, Object> objects;
 
     // 记录每个阶段的该类指令涉及的块总大小
     vector<int> num_delete_operation;
@@ -84,12 +85,13 @@ public:
     {
     }
 
+    // 将文件写入，并返回结果，结果中有写入位置的详细信息，object_id是对象id，size是对象大小，tag是对象标签
+    WriteResult write_object_to_disk(int object_id, int size, int tag, vector<vector<Block *>> &p_blocks);
 
-    //将文件写入，并返回结果，结果中有写入位置的详细信息，object_id是对象id，size是对象大小，tag是对象标签
-    WriteResult write_object_to_disk(int object_id, int size, int tag);
+    bool delete_object_from_disk(int object_id);
 
-    //将block写入指定磁盘的指定位置，object_id指block属于哪个文件，id指的是block是该文件的第几个block。
-    bool write_block_to_disk(int disk_id, int index, int object_id, int id);
+    // 将block写入指定磁盘的指定位置，object_id指block属于哪个文件，id指的是block是该文件的第几个block。
+    Block *write_block_to_disk(int disk_id, int index, int object_id, int id);
 
     void global_pre_proccess();
 
@@ -128,7 +130,7 @@ bool Action_queue::add_pass_action(int time, int index = -1)
     else
     {
         _actions[time].append("p");
-        _tokens = Strategy::recalculate_tokens(_actions, _tokens, time, G);
+        _tokens = Calculate::recalculate_tokens(_actions, _tokens, time, G);
         return true;
     }
 }
@@ -142,13 +144,13 @@ bool Action_queue::add_read_action(int time, int index = -1)
     if (index)
     {
         _actions[time].insert(index, 1, 'r');
-        _tokens = Strategy::recalculate_tokens(_actions, _tokens, time, G, index);
+        _tokens = Calculate::recalculate_tokens(_actions, _tokens, time, G, index);
         return true;
     }
     else
     {
         _actions[time].append("r");
-        _tokens = Strategy::recalculate_tokens(_actions, _tokens, time, G);
+        _tokens = Calculate::recalculate_tokens(_actions, _tokens, time, G);
         return true;
     }
 }
@@ -248,15 +250,25 @@ void Controller::write_action()
     {
         int id, size, tag;
         scanf("%d%d%*d", &id, &size, &tag);
-        objects.insert(Object(id, size, tag));
 
-        printf("%d\n", id);
-        for (int j = 1; j <= REP_NUM; j++)
+        vector<vector<Block *>> p_blocks;
+        p_blocks.resize(REP_NUM);
+        for (int i = 0; i < REP_NUM; i++)
         {
-            printf("%d", " ");
-            for (int k = 1; k <= size; k++)
+            p_blocks[i].resize(size);
+        }
+        WriteResult result = write_object_to_disk(id - 1, size, tag, p_blocks);
+
+        objects.insert(make_pair(id - 1, Object(id - 1, size, tag, p_blocks)));
+        printf("%d\n", id);
+        for (int j = 0; j < REP_NUM; j++)
+        {
+            int disk_id = result.id[j];
+            printf("%d", disk_id);
+            for (int k = 0; k < size; k++)
             {
-                printf(" %d", " ");
+                int index = result.indexs[i][k];
+                printf(" %d", index);
             }
             printf("\n");
         }
@@ -294,23 +306,24 @@ void Controller::run()
     delete_action();
     write_action();
     read_action();
+    current_time++;
 }
 
-bool Controller::write_block_to_disk(int disk_id, int index, int object_id, int id)
+Block *Controller::write_block_to_disk(int disk_id, int index, int object_id, int id)
 {
     if (index < 0 || index >= num_v)
     {
-        return false;
+        return nullptr;
     }
     if (disks[disk_id].units[index])
     {
-        return false;
+        return nullptr;
     }
     disks[disk_id].units[index] = new Block(disk_id, index, object_id, id);
     disks[disk_id].num_free_unit--;
-    return true;
+    return disks[disk_id].units[index];
 }
-WriteResult Controller::write_object_to_disk(int object_id, int size, int tag)
+WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, vector<vector<Block *>> &p_blocks)
 {
     vector<int> disk_ids;
     for (int i = 0; i < disks.size(); i++)
@@ -322,28 +335,58 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag)
 
     vector<vector<int>> indexs;
     indexs.resize(REP_NUM);
-    for(int i=0;i<indexs.size();i++){
+    for (int i = 0; i < indexs.size(); i++)
+    {
         indexs[i].resize(size);
     }
 
     int count = size;
     for (int i = 0; i < REP_NUM; i++)
     {
-        if (!count)
-        {
-            break;
-        }
+
         for (int j = 0; j < num_v; j++)
         {
+            if (!count)
+            {
+                break;
+            }
             int disk_id = disk_ids[i];
             if (!disks[disk_id].units[j])
             {
-                indexs[i][size - count]=j;
-                write_block_to_disk(disk_id, j, object_id, size - count);
+                indexs[i][size - count] = j;
+                p_blocks[i][size - count] = write_block_to_disk(disk_id, j, object_id, size - count);
                 count--;
             }
         }
     }
 
-    return WriteResult(disk_ids,indexs);
+    return WriteResult(disk_ids, indexs);
+}
+
+bool Controller::delete_object_from_disk(int object_id)
+{
+    if (objects.find(object_id) == objects.end())
+    {
+        return false;
+    }
+    Object obj = objects[object_id];
+    for (int i = 0; i < obj.blocks.size(); i++)
+    {
+        vector<Block *> p_blocks = obj.blocks[i];
+        for (int j = 0; j < p_blocks.size(); j++)
+        {
+            int disk_id = p_blocks[j]->disk_id;
+            int index = p_blocks[j]->index;
+            Block *p = disks[disk_id].units[index];
+            if (p)
+            {
+                delete p;
+                p = nullptr;
+            }
+            disks[disk_id].units[index] = nullptr;
+            disks[disk_id].num_free_unit++;
+        }
+    }
+    objects.erase(object_id);
+    return true;
 }
