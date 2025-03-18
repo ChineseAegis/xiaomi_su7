@@ -5,6 +5,7 @@ using namespace std;
 #include <vector>
 #include <algorithm> // 用于max函数
 #include <stdexcept>
+#include"Controller.hpp"
 
 class Strategy
 {
@@ -25,6 +26,8 @@ public:
     // index如果指定，则代表all_actions[time][index]为新增动作，只需根据这个新增动作进行更新
     // 返回值：返回更新后的 tokens
     static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1, int index = -1);
+
+    
 };
 
 
