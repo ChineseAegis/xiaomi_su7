@@ -3,6 +3,9 @@
         "*.lua": "xmake",
         "iostream": "cpp",
         "vector": "cpp",
-        "stdexcept": "cpp"
+        "stdexcept": "cpp",
+        "array": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp"
     }
 }
