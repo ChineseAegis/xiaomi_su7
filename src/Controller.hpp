@@ -55,6 +55,9 @@ struct WriteResult
 {
     vector<int> id;             // 每个磁盘的id
     vector<vector<int>> indexs; // 对应每个磁盘中blocks位置的索引
+    WriteResult(vector<int> id,vector<vector<int>> indexs):id(id),indexs(indexs){
+
+    }
 };
 
 class Controller
@@ -81,9 +84,12 @@ public:
     {
     }
 
-    WriteResult write_object_to_disk(int id, int size, int tag);
 
-    bool write_block_to_disk(int disk_id, int index, int object_id);
+    //将文件写入，并返回结果，结果中有写入位置的详细信息，object_id是对象id，size是对象大小，tag是对象标签
+    WriteResult write_object_to_disk(int object_id, int size, int tag);
+
+    //将block写入指定磁盘的指定位置，object_id指block属于哪个文件，id指的是block是该文件的第几个block。
+    bool write_block_to_disk(int disk_id, int index, int object_id, int id);
 
     void global_pre_proccess();
 
@@ -290,17 +296,54 @@ void Controller::run()
     read_action();
 }
 
-bool Controller::write_block_to_disk(int disk_id, int index, int object_id)
+bool Controller::write_block_to_disk(int disk_id, int index, int object_id, int id)
 {
     if (index < 0 || index >= num_v)
     {
         return false;
     }
-    if (disks[disk_id].storageUnits[index])
+    if (disks[disk_id].units[index])
     {
         return false;
     }
-    disks[disk_id].storageUnits[index] = new Block(disk_id, index, object_id);
+    disks[disk_id].units[index] = new Block(disk_id, index, object_id, id);
     disks[disk_id].num_free_unit--;
     return true;
+}
+WriteResult Controller::write_object_to_disk(int object_id, int size, int tag)
+{
+    vector<int> disk_ids;
+    for (int i = 0; i < disks.size(); i++)
+    {
+        disk_ids.push_back(disks[i].num_free_unit);
+    }
+
+    sort(disk_ids.begin(), disk_ids.end(), std::greater<int>());
+
+    vector<vector<int>> indexs;
+    indexs.resize(REP_NUM);
+    for(int i=0;i<indexs.size();i++){
+        indexs[i].resize(size);
+    }
+
+    int count = size;
+    for (int i = 0; i < REP_NUM; i++)
+    {
+        if (!count)
+        {
+            break;
+        }
+        for (int j = 0; j < num_v; j++)
+        {
+            int disk_id = disk_ids[i];
+            if (!disks[disk_id].units[j])
+            {
+                indexs[i][size - count]=j;
+                write_block_to_disk(disk_id, j, object_id, size - count);
+                count--;
+            }
+        }
+    }
+
+    return WriteResult(disk_ids,indexs);
 }
