@@ -11,7 +11,7 @@ using namespace std;
 // 表示一个硬盘所有时间片的动作序列
 class Action_queue
 {
-    vector<string> _actions; //
+    vector<string> _actions; //所有时间片的动作
     vector<int> _tokens;     // 已经消耗的token
     int G;
 
@@ -28,7 +28,7 @@ public:
         return _actions;
     }
 
-    // 返回指定时间片中，硬盘已经规划了的动作所消耗的token数量
+    // 返回指定时间片中，硬盘已经规划了的动作消耗的token数量
     int get_action_tokens(int time);
 
     // 向该磁盘指定时间片加入pass动作，默认在指定时间片的指令序列的末尾添加，若指定index，则在index处添加
@@ -49,7 +49,7 @@ int Action_queue::get_action_tokens(int time)
     return _tokens[time];
 }
 
-bool Action_queue::add_pass_action(int time, int index = -1)
+bool Action_queue::add_pass_action(int time, int index)
 {
     if (time >= _actions.size())
     {
@@ -69,7 +69,7 @@ bool Action_queue::add_pass_action(int time, int index = -1)
     }
 }
 
-bool Action_queue::add_read_action(int time, int index = -1)
+bool Action_queue::add_read_action(int time, int index)
 {
     if (time >= _actions.size())
     {
