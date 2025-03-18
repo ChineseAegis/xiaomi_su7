@@ -9,6 +9,7 @@
 #include <deque>
 #include "Strategy.hpp"
 #include <unordered_map>
+#include<unordered_set>
 #include"Action_queue.hpp"
 
 using namespace std;
@@ -42,7 +43,12 @@ public:
     int G;                // 代表每个磁头每个时间片最多消耗的令牌数。输入数据保证64≤𝐺≤1000。
     int current_time = 0; // 当前时间片
     vector<Disk> disks;   // 存储硬盘的数组
-    unordered_map<int, Object> objects;
+
+    unordered_map<int, Object> objects;//存储记录所有对象
+
+    unordered_set<int> unread_object_ids;//存储已经请求读取，但还没有读取的对象的id
+    unordered_set<int> read_sucess_object_ids;//存储已经读取成功，但还没有上报的对象的id
+    
 
     // 记录每个阶段的该类指令涉及的块总大小
     vector<int> num_delete_operation;
@@ -134,12 +140,13 @@ void Controller::delete_action()
 {
     int n_delete;
     int abort_num = 0;
-    static int _id[MAX_OBJECT_NUM];
+    vector<int> delete_ids;
 
     scanf("%d", &n_delete);
-    for (int i = 1; i <= n_delete; i++)
+    for (int i = 0; i <= n_delete; i++)
     {
-        scanf("%d", &_id[i]);
+        int delete_id;
+        scanf("%d", &delete_id);
     }
 
     printf("%d\n", abort_num);
