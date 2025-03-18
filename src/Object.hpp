@@ -11,7 +11,7 @@ class Object{
     int num_copy=3;
     vector<vector<Block*>> blocks;//文件分为的对象块,具体如何存放,二维数组,维度3 x size
 
-    Object(int id,int size,int tag):id(id),size(size),tag(tag)
+    Object(int id,int size,int tag,vector<vector<Block*>> blocks):id(id),size(size),tag(tag),blocks(blocks)
     {
         
     }
