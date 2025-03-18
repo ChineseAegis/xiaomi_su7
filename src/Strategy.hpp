@@ -28,7 +28,8 @@ public:
     // 返回值：返回更新后的 tokens
     static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1, int index = -1);
 
-    static Action_queue calculate_actions(int head_index,vector<int> read_queue_indexs,int num_v,int G);
+    //已知一个硬盘的磁头位置，将要读取的所有块的索引，修改传入的action_queue，增加动作到相应时间片中。num v是每个硬盘的存储单元数量
+    static void calculate_actions(int head_index,vector<int> read_queue_indexs,Action_queue& action_queue,int current_time,int num_v);
 
     
 };
