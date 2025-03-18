@@ -2,6 +2,7 @@
     "files.associations": {
         "*.lua": "xmake",
         "iostream": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "stdexcept": "cpp"
     }
 }
