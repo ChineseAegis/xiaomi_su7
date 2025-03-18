@@ -5,7 +5,6 @@ using namespace std;
 #include <vector>
 #include <algorithm> // 用于max函数
 #include <stdexcept>
-#include"Controller.hpp"
 
 class Strategy
 {
