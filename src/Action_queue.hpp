@@ -46,19 +46,19 @@ public:
     int current_time_plus_one();
     
     // 删除当前时间片的所有动作，默认删除后不会将当前时间片向左移动，如果current_time_sub_one指定为true，则当前时间片向左移动一个单位
-    bool current_time_sub_one(bool current_time_sub_one=false);
+    int current_time_sub_one(bool current_time_sub_one=false);
 
     // 返回指定时间片中，硬盘已经规划了的动作消耗的token数量,如果没有规划动作，则是0，如果索引越界，则返回-1。这个time可以指定任意时间片
     int get_action_tokens(int time);
 
-    // 直接把整个string赋值给当前时间片的string。意思是当前时间片的所有动作一把写入
-    bool add_string_to_current_action(string action);
+    // 直接把整个string赋值给当前时间片的string。意思是当前时间片的所有动作一把写入。返回值0代表写入成功，-1代表失败，如果token超过了G，则会返回超过的大小
+    int add_string_to_current_action(string action);
 
-    // 向硬盘当前时间片加入num个pass动作，默认在该时间片的string的末尾添加，若指定index，则在string的index处添加
-    bool add_pass_action(int num, int index = -1);
+    // 向硬盘当前时间片加入num个pass动作，默认在该时间片的string的末尾添加，若指定index，则在string的index处添加。返回值0代表写入成功，-1代表失败，如果token超过了G，则会返回超过的大小
+    int add_pass_action(int num, int index = -1);
 
-    // 向该硬盘当前时间片加入num个read动作，默认在该时间片的string数组的末尾添加，若指定index，则在index处添加
-    bool add_read_action(int num,int index = -1);
+    // 向该硬盘当前时间片加入num个read动作，默认在该时间片的string数组的末尾添加，若指定index，则在index处添加。返回值0代表写入成功，-1代表失败，如果token超过了G，则会返回超过的大小
+    int add_read_action(int num,int index = -1);
 
     // 向该硬盘当前时间片加入jump动作，加完后这个时间片就满了，但是该函数不会自动将当前时间片向右移动。
     bool add_jump_action(int distance);
@@ -123,6 +123,13 @@ int Action_queue::get_action_tokens(int time)
         return -1;
     }
     return _tokens[time];
+}
+
+bool Action_queue::add_string_to_current_action(string action)
+{
+    _actions[current_index]=action;
+    _tokens=Calculate::recalculate_tokens(_actions,_tokens,G,current_index);
+    return true;
 }
 
 bool Action_queue::add_pass_action(int num,int index)
