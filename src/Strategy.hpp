@@ -73,7 +73,7 @@ int Calculate::computeValue(int base, double factor, int times)
 int Calculate::calculate_tokens(const string &actions, int G, const vector<string> &all_actions, int time)
 {
     int token_count = 0;
-    int pre_num_r = 0;
+    int pre_num_r = calculate_num_pre_read_action(all_actions, time, 0);
 
     if (actions[0] == 'j')
     {

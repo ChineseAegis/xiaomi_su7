@@ -57,14 +57,15 @@ bool Action_queue::add_pass_action(int time, int index = -1)
     }
     if (index)
     {
-        _actions[time].insert(index, 1, 'p');
-        _tokens[time] += 1;
+        _actions[time].append("p");
+        _tokens = Calculate::recalculate_tokens(_actions, _tokens, time, G);
         return true;
+        
     }
     else
     {
-        _actions[time].append("p");
-        _tokens = Calculate::recalculate_tokens(_actions, _tokens, time, G);
+        _actions[time].insert(index, 1, 'p');
+        _tokens[time] += 1;
         return true;
     }
 }
