@@ -7,6 +7,8 @@ using namespace std;
 #include <algorithm> // 用于max函数
 #include <stdexcept>
 #include "Controller.hpp"
+#include "Action_queue.hpp"
+
 
 class Calculate
 {
@@ -32,7 +34,7 @@ public:
     static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int begin_time, int end_time);
 
     //已知一个硬盘的磁头位置，将要读取的所有块的索引，修改传入的action_queue，增加动作到相应时间片中。num v是每个硬盘的存储单元数量
-    static void calculate_actions(int head_index,vector<int> read_queue_indexs,Action_queue& action_queue,int current_time,int num_v);
+    static void calculate_actions(int head_index,vector<int> read_queue_indexs,Action_queue& action_queue,int current_time,int num_v,int G);
     
 
     
@@ -155,4 +157,23 @@ vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vec
         {
             tokens[i] = calculate_tokens(all_actions[i], G, all_actions, i);
         }
+}
+
+
+void calculate_actions(int head_index,vector<int> read_queue_indexs,Action_queue& action_queue,int current_time,int num_v,int G)
+{
+    for (size_t i = 0; i < read_queue_indexs.size();i++){
+        int distance = read_queue_indexs[i] - head_index;
+        if(distance<=G){
+            if(distance+64<=G){
+                action_queue._actions[current_time] = add_pass_action(current_time);
+            }
+            else{
+
+            }
+        }
+        else{
+
+        }
+    }
 }
