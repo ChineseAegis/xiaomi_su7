@@ -138,6 +138,7 @@ vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vec
     {
         if (all_actions[time][index] == 'p')
         {
+            
             tokens[time] += 1;
         }
         else if (all_actions[time][index] == 'r')
