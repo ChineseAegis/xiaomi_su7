@@ -28,7 +28,7 @@ public:
     // time 是指定时间片，若未指定，则更新所有时间片的 token
     // index如果指定，则代表all_actions[time][index]为新增动作，只需根据这个新增动作进行更新
     // 返回值：返回更新后的 tokens
-    static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1, int index = -1);
+    static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1, int index = -1,int num=1);
 
     //重载版本，计算指定时间范围内的tokens，左闭右开区间
     static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int begin_time, int end_time);
@@ -79,13 +79,17 @@ int Calculate::computeValue(int base, double factor, int times)
 int Calculate::calculate_tokens(const string &actions, int G, const vector<string> &all_actions, int time)
 {
     int token_count = 0;
-    int pre_num_r = calculate_num_pre_read_action(all_actions, time, 0);
+    if(actions.size()==0)
+    {
+        return token_count;
+    }
 
     if (actions[0] == 'j')
     {
         token_count += G;
         return token_count;
     }
+    int pre_num_r = 0;
 
     for (size_t i = 0; i < actions.size(); i++)
     {
@@ -118,7 +122,7 @@ int Calculate::calculate_tokens(const string &actions, int G, const vector<strin
     return token_count;
 }
 
-vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time, int index)
+vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time, int index,int num)
 {
     if (time == -1)
     {
@@ -140,13 +144,19 @@ vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vec
     {
         if (all_actions[time][index] == 'p')
         {
-            
-            tokens[time] += 1;
+            if((index-1>=0&&index+num<all_actions[time].size()&&all_actions[time][index-1]=='r'&&all_actions[time][index+num]=='r')||(index==0&&index+num<all_actions[time].size()&&all_actions[time][index+num]=='r'&&time-1>=0&&all_actions[time-1].size()>0&&all_actions[time-1][all_actions[time-1].size()-1]=='r'))
+            {
+                tokens[time]=calculate_tokens(all_actions[time],G,all_actions,time);
+            }else{
+                tokens[time] += num;
+            }
         }
         else if (all_actions[time][index] == 'r')
         {
-            int pre_num_r = calculate_num_pre_read_action(all_actions, time, index);
-            tokens[time] += max(16, computeValue(64, 0.8, pre_num_r));
+            // int pre_num_r = calculate_num_pre_read_action(all_actions, time, index+num);
+            // tokens[time] += max(16, computeValue(64, 0.8, pre_num_r));
+
+            tokens[time]=calculate_tokens(all_actions[time],G,all_actions,time);
         }
     }
     return tokens;
