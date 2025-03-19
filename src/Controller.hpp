@@ -49,7 +49,7 @@ public:
 
     int request_success_num=0;//读取成功但还没有上报的请求的个数
     unordered_map<int,vector<int>> object_read_sucess_ids;   // 存储已经读取成功，但还没有上报的对象,第一个int是对象id，第二个数组是存放请求id的数组
-    vector<pair<int,vector<int>>> object_read_failed_ids;//存储读取失败的请求,第一个int是对象id，第二个数组是存放请求id的数组
+    
 
     // 记录每个阶段的该类指令涉及的块总大小
     vector<int> num_delete_operation;
@@ -89,9 +89,10 @@ public:
 void Controller::global_pre_proccess()
 {
     scanf("%d%d%d%d%d", &num_T, &num_tag, &num_disk, &num_v, &G);
+    num_T+=EXTRA_TIME;
     for (int i = 0; i < num_disk; i++)
     {
-        disks.push_back(Disk(num_v));
+        disks.push_back(Disk(num_v,i));
     }
 
     for (int i = 1; i <= num_tag; i++)
@@ -145,8 +146,10 @@ void Controller::delete_action()
     int abort_num = 0;
     vector<int> delete_ids;
 
+    vector<pair<int,vector<int>>> object_read_failed_ids;//存储读取失败的请求,第一个int是对象id，第二个数组是存放请求id的数组
+
     scanf("%d", &n_delete);
-    for (int i = 0; i <= n_delete; i++)
+    for (int i = 0; i < n_delete; i++)
     {
         int delete_id;
         scanf("%d", &delete_id);
@@ -181,7 +184,7 @@ void Controller::write_action()
     for (int i = 0; i < n_write; i++)
     {
         int id, size, tag;
-        scanf("%d%d%*d", &id, &size, &tag);
+        scanf("%d%d%d", &id, &size, &tag);
 
         vector<vector<Block *>> p_blocks;
 
@@ -192,7 +195,7 @@ void Controller::write_action()
         for (int j = 0; j < REP_NUM; j++)
         {
             int disk_id = result.id[j];
-            printf("%d", disk_id);
+            printf("%d", disk_id+1);
             for (int k = 0; k < size; k++)
             {
                 int index = result.indexs[j][k];
@@ -213,7 +216,7 @@ void Controller::read_action()
     for (int i = 1; i <= n_read; i++)
     {
         scanf("%d%d", &request_id, &object_id);
-        deal_read_request(object_id,request_id);
+        deal_read_request(object_id-1,request_id-1);
     }
 
     // 输出动作
@@ -238,7 +241,7 @@ void Controller::read_action()
     {
         for(auto& request_id:request.second)
         {
-            printf("%d\n",request_id);
+            printf("%d\n",request_id+1);
         }
     }
     this->request_success_num=0;
@@ -261,7 +264,7 @@ Block *Controller::write_block_to_disk(int disk_id, int index, int object_id, in
     {
         return nullptr;
     }
-    if (disks[disk_id].units[index])
+    if (disks[disk_id].units[index]!=nullptr)
     {
         return nullptr;
     }
@@ -291,18 +294,19 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
     {
         indexs[i].resize(size);
     }
-
+    
     for (int i = 0; i < REP_NUM; i++)
     {
+        int disk_id = disk_pair_ids[i].first;
         int count = size;
         for (int j = 0; j < num_v; j++)
         {
             if (!count)
             {
                 break;
-            }
-            int disk_id = disk_pair_ids[i].first;
-            if (!disks[disk_id].units[j])
+            }        
+            //throw std::runtime_error(to_string(disk_id));
+            if (disks[disk_id].units[j]==nullptr)
             {
                 indexs[i][size - count] = j;
                 p_blocks[i][size - count] = write_block_to_disk(disk_id, j, object_id, size - count);

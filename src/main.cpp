@@ -4,7 +4,11 @@
 
 int main()
 {
-    Controller controller;
-    controller.global_pre_proccess();
-    controller.run();
+    Controller* controller=new Controller();
+    controller->global_pre_proccess();
+    int count=controller->num_T;
+    for(int i=0;i<count;i++)
+    {
+        controller->run();
+    }
 }
