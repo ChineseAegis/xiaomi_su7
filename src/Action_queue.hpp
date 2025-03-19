@@ -18,12 +18,12 @@ class Action_queue
     private:
     vector<string> _actions; // 所有时间片的动作
     vector<int> _tokens;     // 已经消耗的token
-    int G;
     int current_index = 0;
     void check_end_index(int time);
     void check_back_read_tokens(int time);
 
 public:
+    int G;
     Action_queue(int num_T, int G)
     {
         _actions.resize(num_T);
@@ -51,7 +51,7 @@ public:
     // 返回指定时间片中，硬盘已经规划了的动作消耗的token数量,如果没有规划动作，则是0，如果索引越界，则返回-1。这个time可以指定任意时间片
     int get_action_tokens(int time);
 
-    // 直接把整个string赋值给当前时间片的string。意思是当前时间片的所有动作一把写入。返回值0代表写入成功，-1代表失败，如果token超过了G，则会返回超过的大小
+    // 直接把整个string赋值给当前时间片的string。意思是当前时间片的所有动作一把写入,会覆盖原本的string。返回值0代表写入成功，-1代表失败，如果token超过了G，则会返回超过的大小
     int add_string_to_current_action(string action);
 
     // 向硬盘当前时间片加入num个pass动作，默认在该时间片的string的末尾添加，若指定index，则在string的index处添加。返回值0代表写入成功，-1代表失败，如果token超过了G，则会返回超过的大小
@@ -125,47 +125,63 @@ int Action_queue::get_action_tokens(int time)
     return _tokens[time];
 }
 
-bool Action_queue::add_string_to_current_action(string action)
+int Action_queue::add_string_to_current_action(string action)
 {
     _actions[current_index]=action;
     _tokens=Calculate::recalculate_tokens(_actions,_tokens,G,current_index);
-    return true;
+    int token = _tokens[current_index];
+    if(token>G)
+    {
+        _actions[current_index]="";
+        _tokens[current_index]=0;
+        return token-G;
+    }else
+    {
+        return 0;
+    }
 }
 
-bool Action_queue::add_pass_action(int num,int index)
+int Action_queue::add_pass_action(int num,int index)
 {
-    if(_tokens[current_index]>=G)
+    int t_token=_tokens[current_index];
+    if (index>=0)
     {
-        return false;
-    }
-
-    if (index)
-    {
-        _actions[current_index].insert(index, 1, 'p');
+        auto it = _actions[current_index].begin()+index;
+        _actions[current_index].insert(it, num, 'p');
         _tokens = Calculate::recalculate_tokens(_actions, _tokens, G,current_index,index);
-        return true;
-        
     }
     else
     {
-        index = _actions[current_index].size();
-        _actions[current_index].insert(index, num, 'p');
+        auto it = _actions[current_index].end();
+        _actions[current_index].insert(it, num, 'p');
         _tokens[current_index] += num;
-        return true;
+    }
+    int token = _tokens[current_index];
+    if(token>G)
+    {
+        this->delete_action(index,index+num);
+        _tokens[current_index]=t_token;
+        return token-G;
+    }else
+    {
+        return 0;
     }
 }
 
-bool Action_queue::add_read_action(int num,int index)
+int Action_queue::add_read_action(int num,int index)
 {
+    int t_token=_tokens[current_index];
     if (index)
     {
-        _actions[current_index].insert(index, num, 'r');
+        auto it = _actions[current_index].begin()+index;
+        _actions[current_index].insert(it, num, 'r');
         _tokens = Calculate::recalculate_tokens(_actions, _tokens, current_index, G, index);
         return true;
     }
     else
     {
-        _actions[current_index].append("r");
+        auto it = _actions[current_index].end();
+        _actions[current_index].insert(it, num, 'r');
         _tokens = Calculate::recalculate_tokens(_actions, _tokens, G,current_index, _actions.size()-1);
         return true;
     }
@@ -193,7 +209,7 @@ bool Action_queue::delete_action(int begin,int end)
     return true;
 }
 
-bool Action_queue::current_time_sub_one(bool current_time_sub_one)
+int Action_queue::current_time_sub_one(bool current_time_sub_one)
 {
     _actions[current_index] = "";
     _tokens[current_index] = 0;
@@ -201,5 +217,5 @@ bool Action_queue::current_time_sub_one(bool current_time_sub_one)
     {
         current_index--;
     }
-    return true;
+    return current_index;
 }
