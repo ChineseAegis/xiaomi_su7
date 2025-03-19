@@ -1,3 +1,4 @@
+#pragma once
 #include"Disk.hpp"
 #include<vector>
 
@@ -9,7 +10,7 @@ class Object{
     int size;//对象大小,数量是几就代表要分成几个对象块
     int tag;
     int num_copy=3;
-    vector<vector<Block*>> blocks;//文件分为的对象块,具体如何存放,二维数组,维度3 x size
+    vector<vector<Block*>> blocks;//文件分为的对象块,二维数组,维度3 x size,指向具体的指针对象
 
     Object(int id,int size,int tag,vector<vector<Block*>> blocks):id(id),size(size),tag(tag),blocks(blocks)
     {

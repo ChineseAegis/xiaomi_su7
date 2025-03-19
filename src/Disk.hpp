@@ -18,7 +18,7 @@ public:
     int num_free_unit;
     vector<pair<int, int>> free_units;//记录空闲存储单元的数组，二元组第一个元素是空闲地址的起始位置，第二个元素是空闲存储单元长度
 
-    Disk(int num_v) : num_v(num_v), num_free_unit(num_v)
+    Disk(int num_v,int id) : num_v(num_v), num_free_unit(num_v),id(id)
     {
         for (int i = 0; i < num_v; i++)
         {
