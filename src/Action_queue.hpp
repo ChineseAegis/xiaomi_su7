@@ -133,6 +133,7 @@ bool Action_queue::add_pass_action(int index)
         _actions[current_index].insert(index, 1, 'p');
         _tokens = Calculate::recalculate_tokens(_actions, _tokens, G,current_index,index);
         return true;
+        
     }
     else
     {
