@@ -44,24 +44,28 @@ public:
 
     //手动让当前时间片向右移一步，返回移动后的时间片，如果超出总时间，则返回-1。
     int current_time_plus_one();
+    
+    // 删除当前时间片的所有动作，默认删除后不会将当前时间片向左移动，如果current_time_sub_one指定为true，则当前时间片向左移动一个单位
+    bool current_time_sub_one(bool current_time_sub_one=false);
 
     // 返回指定时间片中，硬盘已经规划了的动作消耗的token数量,如果没有规划动作，则是0，如果索引越界，则返回-1。这个time可以指定任意时间片
     int get_action_tokens(int time);
 
-    // 向硬盘当前时间片加入pass动作，默认在该时间片的string的末尾添加，若指定index，则在string的index处添加
-    bool add_pass_action(int index = -1);
+    // 直接把整个string赋值给当前时间片的string。意思是当前时间片的所有动作一把写入
+    bool add_string_to_current_action(string action);
 
-    // 向该硬盘当前时间片加入read动作，默认在该时间片的string数组的末尾添加，若指定index，则在index处添加
-    bool add_read_action(int index = -1);
+    // 向硬盘当前时间片加入num个pass动作，默认在该时间片的string的末尾添加，若指定index，则在string的index处添加
+    bool add_pass_action(int num, int index = -1);
+
+    // 向该硬盘当前时间片加入num个read动作，默认在该时间片的string数组的末尾添加，若指定index，则在index处添加
+    bool add_read_action(int num,int index = -1);
 
     // 向该硬盘当前时间片加入jump动作，加完后这个时间片就满了，但是该函数不会自动将当前时间片向右移动。
     bool add_jump_action(int distance);
 
-    // 删除当前时间片的动作，默认删除当前时间片string的最后一个动作，若指定index，则删除当前时间片的string的index处的动作
-    bool delete_action(int index = -1);
+    // 删除当前时间片的动作，删除string中begin，end之间的动作，左闭右开。
+    bool delete_action(int begin,int end);
 
-    // 删除当前时间片的所有动作，默认删除后不会将当前时间片向左移动，如果current_time_sub_one指定为true，则当前时间片向左移动一个单位
-    bool delete_current_rime_actions(bool current_time_sub_one=false);
 };
 
 void Action_queue::check_end_index(int time)
@@ -121,7 +125,7 @@ int Action_queue::get_action_tokens(int time)
     return _tokens[time];
 }
 
-bool Action_queue::add_pass_action(int index)
+bool Action_queue::add_pass_action(int num,int index)
 {
     if(_tokens[current_index]>=G)
     {
@@ -137,17 +141,18 @@ bool Action_queue::add_pass_action(int index)
     }
     else
     {
-        _actions[current_index].append("p");
-        _tokens[current_index] += 1;
+        index = _actions[current_index].size();
+        _actions[current_index].insert(index, num, 'p');
+        _tokens[current_index] += num;
         return true;
     }
 }
 
-bool Action_queue::add_read_action(int index)
+bool Action_queue::add_read_action(int num,int index)
 {
     if (index)
     {
-        _actions[current_index].insert(index, 1, 'r');
+        _actions[current_index].insert(index, num, 'r');
         _tokens = Calculate::recalculate_tokens(_actions, _tokens, current_index, G, index);
         return true;
     }
@@ -172,47 +177,16 @@ bool Action_queue::add_jump_action(int distance)
     _tokens[current_index] = G;
 }
 
-bool Action_queue::delete_action(int index = -1)
+bool Action_queue::delete_action(int begin,int end)
 {
-    if (index)
-    {
-        if (_actions[current_index].size()==0||_actions[current_index][0] == 'j' || index < 0 || index >= _actions[current_index].size())
-        {
-            return false;
-        }
-        char s = _actions[current_index][index];
-        auto begin = _actions[current_index].begin();
-        _actions[current_index].erase(begin + index);
-        _tokens = Calculate::recalculate_tokens(_actions, _tokens, G, current_index);
-    }
-    else
-    {
-        if(_actions[current_index].size()==0)
-        {
-            return true;
-        }
-        if (_actions[current_index][0] == 'j')
-        {
-            _actions[current_index] = "";
-            _tokens[current_index] = 0;
-            return true;
-        }
-        char s = _actions[current_index][_actions.size() - 1];
-        _actions[current_index].pop_back();
-        if (s == 'p')
-        {
-            _tokens[current_index]--;
-        }
-        else
-        {
-            _tokens = Calculate::recalculate_tokens(_actions, _tokens, G, current_index);
-        }
-    }
-
+    auto begin_it=_actions[current_index].begin()+begin;
+    auto end_it=_actions[current_index].begin()+begin+end;
+    _actions[current_index].erase(begin_it,end_it);
+    _tokens=Calculate::recalculate_tokens(_actions,_tokens,G,current_index);
     return true;
 }
 
-bool Action_queue::delete_current_rime_actions(bool current_time_sub_one)
+bool Action_queue::current_time_sub_one(bool current_time_sub_one)
 {
     _actions[current_index] = "";
     _tokens[current_index] = 0;
