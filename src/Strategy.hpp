@@ -8,14 +8,20 @@ using namespace std;
 #include <stdexcept>
 #include "Controller.hpp"
 #include "Action_queue.hpp"
+#include <unordered_set>
+#include <unordered_map>
+#include "Block.hpp"
+#include "Disk.hpp"
+#include <climits>
 
+#define REP_NUM (3)
 
 class Calculate
 {
-    //计算指定时间片、索引的某个r动作之前有几个r动作。
+    // 计算指定时间片、索引的某个r动作之前有几个r动作。
     static int calculate_num_pre_read_action(const vector<string> &actions, int time, int index);
 
-    //计算连续几步read所消耗的token
+    // 计算连续几步read所消耗的token
     static int computeValue(int base, double factor, int times);
 
     // 根据行为计算tokens的方式
@@ -28,17 +34,20 @@ public:
     // time 是指定时间片，若未指定，则更新所有时间片的 token
     // index如果指定，则代表all_actions[time][index]为新增动作，只需根据这个新增动作进行更新
     // 返回值：返回更新后的 tokens
-    static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1, int index = -1,int num=1);
+    static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1, int index = -1, int num = 1);
 
+    // 已知一个硬盘的磁头位置，将要读取的所有块的索引，修改传入的action_queue，增加动作到相应时间片中。num v是每个硬盘的存储单元数量
+    static void calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G);
 
-    //已知一个硬盘的磁头位置，将要读取的所有块的索引，修改传入的action_queue，增加动作到相应时间片中。num v是每个硬盘的存储单元数量
-    static void calculate_actions(int head_index,vector<int> read_queue_indexs,Action_queue& action_queue,int current_time,int num_v,int G);
-    
+    //计算每个硬盘的block任务队列
+    static vector<vector<int>> calculate_blocks_queue(unordered_map<int, Object> &object_unread_ids, vector<Disk> &disks, int time,int num_v,int G,int num_T);
 
-    
+    //计算硬盘两点之间消耗的时间片
+    static int cost_between_two_index(int head_index, int target_index, vector<int> read_queue_indexs, int current_time, int num_v, int G, int max_T);
+
+    // 计算硬盘中两个索引之间的距离，num_v是该硬盘的索引总数
+    static int distance_between_two_index(int begin_index, int end_index, int num_v);
 };
-
-
 
 int Calculate::calculate_num_pre_read_action(const vector<string> &actions, int time, int index)
 {
@@ -77,7 +86,7 @@ int Calculate::computeValue(int base, double factor, int times)
 int Calculate::calculate_tokens(const string &actions, int G, const vector<string> &all_actions, int time)
 {
     int token_count = 0;
-    if(actions.size()==0)
+    if (actions.size() == 0)
     {
         return token_count;
     }
@@ -120,7 +129,7 @@ int Calculate::calculate_tokens(const string &actions, int G, const vector<strin
     return token_count;
 }
 
-vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time, int index,int num)
+vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time, int index, int num)
 {
     if (time == -1)
     {
@@ -142,10 +151,12 @@ vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vec
     {
         if (all_actions[time][index] == 'p')
         {
-            if((index-1>=0&&index+num<all_actions[time].size()&&all_actions[time][index-1]=='r'&&all_actions[time][index+num]=='r')||(index==0&&index+num<all_actions[time].size()&&all_actions[time][index+num]=='r'&&time-1>=0&&all_actions[time-1].size()>0&&all_actions[time-1][all_actions[time-1].size()-1]=='r'))
+            if ((index - 1 >= 0 && index + num < all_actions[time].size() && all_actions[time][index - 1] == 'r' && all_actions[time][index + num] == 'r') || (index == 0 && index + num < all_actions[time].size() && all_actions[time][index + num] == 'r' && time - 1 >= 0 && all_actions[time - 1].size() > 0 && all_actions[time - 1][all_actions[time - 1].size() - 1] == 'r'))
             {
-                tokens[time]=calculate_tokens(all_actions[time],G,all_actions,time);
-            }else{
+                tokens[time] = calculate_tokens(all_actions[time], G, all_actions, time);
+            }
+            else
+            {
                 tokens[time] += num;
             }
         }
@@ -154,29 +165,98 @@ vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vec
             // int pre_num_r = calculate_num_pre_read_action(all_actions, time, index+num);
             // tokens[time] += max(16, computeValue(64, 0.8, pre_num_r));
 
-            tokens[time]=calculate_tokens(all_actions[time],G,all_actions,time);
+            tokens[time] = calculate_tokens(all_actions[time], G, all_actions, time);
         }
     }
     return tokens;
 }
 
-
-
-
-void calculate_actions(int head_index,vector<int> read_queue_indexs,Action_queue& action_queue,int current_time,int num_v,int G)
+vector<vector<int>> Calculate::calculate_blocks_queue(unordered_map<int, Object> &object_unread_ids, vector<Disk> &disks, int time,int num_v,int G,int num_T)
 {
-    for (size_t i = 0; i < read_queue_indexs.size();i++){
-        int distance = read_queue_indexs[i] - head_index;
-        if(distance<=G){
-            if(distance+64<=G){
-                action_queue._actions[current_time] = add_pass_action(current_time);
+    vector<vector<int>> disk_unread_indexs;
+    disk_unread_indexs.resize(disks.size());
+    vector<vector<int>> unread_indexs;
+    unread_indexs.resize(disks.size());
+    for(auto &object_pair : object_unread_ids)
+    {
+        const Object &object = object_pair.second;
+        for (int i = 0; i < REP_NUM; i++)
+        {
+            for (auto &block : object.blocks[i])
+            {
+                unread_indexs[block->disk_id].push_back(block->index);
             }
-            else{
-
-            }
-        }
-        else{
-
         }
     }
+    for (auto &object_pair : object_unread_ids)
+    {
+        const Object &object = object_pair.second;
+        int block_num=object.blocks.size();
+        vector<int> record;
+        record.resize(block_num,INT_MAX);
+        vector<pair<int,int>> disk_ids;
+        disk_ids.resize(block_num);
+        for (int i = 0; i < REP_NUM; i++)
+        {
+            for (auto &block : object.blocks[i])
+            {
+                int cost = cost_between_two_index(disks[block->disk_id].head,block->index,unread_indexs[block->disk_id],time,num_v,G,num_T);
+                if (cost<record[block->id])
+                {
+                    record[block->id]=cost;
+                    disk_ids[block->id].first=block->disk_id;
+                    disk_ids[block->id].second=block->index;
+                }
+            }
+        }
+        for(int j=0;j<block_num;j++)
+        {
+            disk_unread_indexs[disk_ids[j].first].push_back(disk_ids[j].second);
+        }
+        
+    }
+
+    return disk_unread_indexs;
+}
+
+void calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G)
+{
+    for (size_t i = 0; i < read_queue_indexs.size(); i++)
+    {
+        int distance = read_queue_indexs[i] - head_index;
+        if (distance <= G)
+        {
+            if (distance + 64 <= G)
+            {
+                action_queue._actions[current_time] = add_pass_action(current_time);
+            }
+            else
+            {
+            }
+        }
+        else
+        {
+        }
+    }
+}
+
+int Calculate::cost_between_two_index(int head_index, int target_index, vector<int> read_queue_indexs, int current_time, int num_v, int G, int max_T)
+{
+    read_queue_indexs.push_back(target_index);
+    Action_queue actions(max_T, G);
+    calculate_actions(head_index, read_queue_indexs, actions, 0, num_v, G);
+    return actions.get_current_time();
+}
+
+int Calculate::distance_between_two_index(int begin_index, int end_index, int num_v)
+{
+    // 边界检查：防止非法索引
+    if (begin_index < 0 || begin_index >= num_v ||
+        end_index < 0 || end_index >= num_v || num_v <= 0)
+    {
+        return -1;
+    }
+
+    // 使用模运算计算循环距离（C-SCAN方式）
+    return (end_index - begin_index + num_v) % num_v;
 }
