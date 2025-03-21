@@ -18,3 +18,9 @@ struct Block
     {
     }
 };
+
+struct BlockHash {
+    std::size_t operator()(const Block& p) const {
+        return std::hash<int>()(p.disk_id) ^ (std::hash<int>()(p.index) << 1);  
+    }
+};
