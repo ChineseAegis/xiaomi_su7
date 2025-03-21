@@ -39,14 +39,16 @@ public:
     // 已知一个硬盘的磁头位置，将要读取的所有块的索引，修改传入的action_queue，增加动作到相应时间片中。num v是每个硬盘的存储单元数量
     static void calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G);
 
-    //计算每个硬盘的block任务队列
-    static vector<vector<int>> calculate_blocks_queue(unordered_map<int, Object> &object_unread_ids, vector<Disk> &disks, int time,int num_v,int G,int num_T);
+    // 计算每个硬盘的block任务队列
+    static vector<vector<int>> calculate_blocks_queue(unordered_map<int, Object> &object_unread_ids, vector<Disk> &disks, int time, int num_v, int G, int num_T);
 
-    //计算硬盘两点之间消耗的时间片
+    // 计算硬盘两点之间消耗的时间片
     static int cost_between_two_index(int head_index, int target_index, vector<int> read_queue_indexs, int current_time, int num_v, int G, int max_T);
 
     // 计算硬盘中两个索引之间的距离，num_v是该硬盘的索引总数
     static int distance_between_two_index(int begin_index, int end_index, int num_v);
+
+    static vector<int> sort_unread_indexs(int head, vector<int> read_queue_indexs, int num_v);
 };
 
 int Calculate::calculate_num_pre_read_action(const vector<string> &actions, int time, int index)
@@ -171,13 +173,13 @@ vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vec
     return tokens;
 }
 
-vector<vector<int>> Calculate::calculate_blocks_queue(unordered_map<int, Object> &object_unread_ids, vector<Disk> &disks, int time,int num_v,int G,int num_T)
+vector<vector<int>> Calculate::calculate_blocks_queue(unordered_map<int, Object> &object_unread_ids, vector<Disk> &disks, int time, int num_v, int G, int num_T)
 {
     vector<vector<int>> disk_unread_indexs;
     disk_unread_indexs.resize(disks.size());
     vector<vector<int>> unread_indexs;
     unread_indexs.resize(disks.size());
-    for(auto &object_pair : object_unread_ids)
+    for (auto &object_pair : object_unread_ids)
     {
         const Object &object = object_pair.second;
         for (int i = 0; i < REP_NUM; i++)
@@ -191,29 +193,28 @@ vector<vector<int>> Calculate::calculate_blocks_queue(unordered_map<int, Object>
     for (auto &object_pair : object_unread_ids)
     {
         const Object &object = object_pair.second;
-        int block_num=object.blocks.size();
+        int block_num = object.blocks.size();
         vector<int> record;
-        record.resize(block_num,INT_MAX);
-        vector<pair<int,int>> disk_ids;
+        record.resize(block_num, INT_MAX);
+        vector<pair<int, int>> disk_ids;
         disk_ids.resize(block_num);
         for (int i = 0; i < REP_NUM; i++)
         {
             for (auto &block : object.blocks[i])
             {
-                int cost = cost_between_two_index(disks[block->disk_id].head,block->index,unread_indexs[block->disk_id],time,num_v,G,num_T);
-                if (cost<record[block->id])
+                int cost = cost_between_two_index(disks[block->disk_id].head, block->index, unread_indexs[block->disk_id], time, num_v, G, num_T);
+                if (cost < record[block->id])
                 {
-                    record[block->id]=cost;
-                    disk_ids[block->id].first=block->disk_id;
-                    disk_ids[block->id].second=block->index;
+                    record[block->id] = cost;
+                    disk_ids[block->id].first = block->disk_id;
+                    disk_ids[block->id].second = block->index;
                 }
             }
         }
-        for(int j=0;j<block_num;j++)
+        for (int j = 0; j < block_num; j++)
         {
             disk_unread_indexs[disk_ids[j].first].push_back(disk_ids[j].second);
         }
-        
     }
 
     return disk_unread_indexs;
@@ -259,4 +260,10 @@ int Calculate::distance_between_two_index(int begin_index, int end_index, int nu
 
     // 使用模运算计算循环距离（C-SCAN方式）
     return (end_index - begin_index + num_v) % num_v;
+}
+
+vector<int> Calculate::sort_unread_indexs(int head, vector<int> read_queue_indexs, int num_v)
+{
+    sort(read_queue_indexs.begin(), read_queue_indexs.end(), [head, &read_queue_indexs, num_v](int a, int b)
+         { return distance_between_two_index(head, a, num_v) < distance_between_two_index(head, b, num_v); });
 }
