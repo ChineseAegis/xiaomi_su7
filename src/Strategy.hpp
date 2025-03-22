@@ -221,84 +221,48 @@ vector<vector<int>> Calculate::calculate_blocks_queue(unordered_map<int, Object>
 }
 
 void calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G)
-// {
-
-//     int n = read_queue_indexs.size();
-
-//     for (size_t i = 0; i < n; i++)
-//     {
-//         int distance = read_queue_indexs[i] - head_index;
-//         while (distance <= G)
-//         {
-//             if (distance + 64 <= G)
-//             {
-//                 action_queue.add_pass_action(distance);
-//                 action_queue.add_read_action(1);    
-//             }
-//             else
-//             {
-//                 action_queue.add_pass_action(distance);
-//                 break;
-//             }
-//             // head_index = read_queue_indexs[i];
-//             int action_tokens = action_queue.get_action_tokens(current_time);
-//             distance = action_tokens;
-//         }
-//         current_time += 1;
-        
-        
-//     }    
-
-// }
-
-// {
-//     int index = 0;//记录在一个时间片下连续读取了几个块
-//     int n = read_queue_indexs.size();
-//     int action_tokens = action_queue.get_action_tokens(current_time); // distance为磁头到当前块耗费的令牌数
-//     for (size_t i = 0; i < n;i++){
-//         int distance = read_queue_indexs[i] - head_index;
-//         action_tokens+=distance;
-//         while (action_tokens <= G)
-//         {
-//             action_queue.add_pass_action(distance);
-//             action_queue.add_read_action(1);
-//             int decision = action_queue.add_read_action(1);//用于判断是否读取超过大小
-//             if (decision!=0&&decision!=-1){
-//                 action_queue.delete_action(1, 2);
-//             }
-//             else{
-//                 break;
-//             }
-
-//         }
-
-//     }
-        
-    
-
-// }
-
 {
     
     int n = read_queue_indexs.size();
     for (size_t i = 0; i < n;i++){
+        int distance = Calculate::distance_between_two_index(read_queue_indexs[i],head_index,num_v);
         int distance = read_queue_indexs[i] - head_index;
         int action_tokens=distance+action_queue.get_action_tokens(current_time);
         if(action_tokens>G){
-            action_queue.add_jump_action(distance);
-            current_time++;
-            head_index = read_queue_indexs[i];
+            
+            if(action_queue.get_action_tokens(current_time)==0){
+                action_queue.add_jump_action(distance);
+                current_time++;
+                head_index = read_queue_indexs[i]; 
+            }
+            else{
+                int rest_tokens = action_queue.get_action_tokens(current_time)-G;
+                
+                if(distance<rest_tokens){
+                    int move = distance - rest_tokens;
+                    action_queue.add_pass_action(rest_tokens);
+                    current_time++;
+                    action_queue.add_pass_action(move); 
+                }
+                else{
+                    action_queue.add_jump_action(distance);
+                    head_index = read_queue_indexs[i];
+                    current_time++; 
+                } 
+            }
         }
         else{
             head_index = read_queue_indexs[i];
             action_queue.add_pass_action(distance);
         }
         action_queue.add_read_action(1);
-        int decision = action_queue.add_read_action(1);//用于判断是否读取超过大小
+        head_index += 1;
+        int decision = action_queue.add_read_action(1); // 用于判断是否读取超过大小
         if (decision!=0&&decision!=-1){//超过大小
             action_queue.delete_last_action(); 
             current_time++;
             action_queue.add_read_action(1);
+            head_index += 1;
         }
     }
 }
