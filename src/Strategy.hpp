@@ -225,45 +225,41 @@ void calculate_actions(int head_index, vector<int> read_queue_indexs, Action_que
     
     int n = read_queue_indexs.size();
     for (size_t i = 0; i < n;i++){
-        int distance = Calculate::distance_between_two_index(read_queue_indexs[i],head_index,num_v);
-        int distance = read_queue_indexs[i] - head_index;
+        int distance = Calculate::distance_between_two_index(head_index,read_queue_indexs[i],num_v);
         int action_tokens=distance+action_queue.get_action_tokens(current_time);
         if(action_tokens>G){
             
             if(action_queue.get_action_tokens(current_time)==0){
                 action_queue.add_jump_action(distance);
                 current_time++;
-                head_index = read_queue_indexs[i]; 
             }
             else{
                 int rest_tokens = action_tokens-G;
                 
-                if(distance<rest_tokens){
-                    int move = distance - rest_tokens;
-                    action_queue.add_pass_action(rest_tokens);
+                if(rest_tokens<G){
+                    int move = G-action_queue.get_action_tokens(current_time);
+                    action_queue.add_pass_action(move);
                     current_time++;
-                    action_queue.add_pass_action(move); 
+                    action_queue.add_pass_action(rest_tokens); 
                 }
                 else{
-                    action_queue.add_jump_action(distance);
-                    head_index = read_queue_indexs[i];
                     current_time++; 
+                    action_queue.add_jump_action(distance);
+                    current_time++;
                 } 
             }
         }
-        else{
-            head_index = read_queue_indexs[i];
+        else{            
             action_queue.add_pass_action(distance);
         }
         action_queue.add_read_action(1);
-        head_index += 1;
         int decision = action_queue.add_read_action(1); // 用于判断是否读取超过大小
         if (decision!=0&&decision!=-1){//超过大小
             action_queue.delete_last_action(); 
             current_time++;
             action_queue.add_read_action(1);
-            head_index += 1;
         }
+        head_index = read_queue_indexs[i]+1;
     }
 }
 
