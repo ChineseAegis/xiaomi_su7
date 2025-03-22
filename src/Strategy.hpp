@@ -220,7 +220,7 @@ vector<vector<int>> Calculate::calculate_blocks_queue(unordered_map<int, Object>
     return disk_unread_indexs;
 }
 
-void calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G)
+void Calculate::calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G)
 {
     
     int n = read_queue_indexs.size();
