@@ -27,7 +27,7 @@ class Action_queue
 
 public:
     int G;
-    Action_queue(int num_T, int G)
+    Action_queue(int num_T, int G):G(G)
     {
         _actions.resize(num_T);
         _tokens.resize(num_T, 0);
@@ -37,6 +37,16 @@ public:
     const vector<string> &get_actions()
     {
         return _actions;
+    }
+
+    void set_current_time(int current_time)
+    {
+        for(int i=current_time;i<=current_index;i++)
+        {
+            _actions[i]="";
+            _tokens[i]=0;
+        }
+        this->current_index=current_time;
     }
 
     // 返回当前时间片的值，返回值意味着所处在哪个时间片，你只能往这个时间片增加、删除动作。
