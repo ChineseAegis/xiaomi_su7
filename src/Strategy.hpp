@@ -236,7 +236,7 @@ void calculate_actions(int head_index, vector<int> read_queue_indexs, Action_que
                 head_index = read_queue_indexs[i]; 
             }
             else{
-                int rest_tokens = action_queue.get_action_tokens(current_time)-G;
+                int rest_tokens = action_tokens-G;
                 
                 if(distance<rest_tokens){
                     int move = distance - rest_tokens;
