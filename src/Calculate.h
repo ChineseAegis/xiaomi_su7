@@ -27,6 +27,15 @@ class Calculate
     // 根据行为计算tokens的方式
     static int calculate_tokens(const string &actions, int G, const vector<string> &all_actions, int time);
 
+    // 计算硬盘两点之间消耗的时间片
+    static int cost_between_two_index(int head_index, int target_index, vector<int> read_queue_indexs, int current_time, int num_v, int G, int max_T);
+
+    // 计算硬盘中两个索引之间的距离，num_v是该硬盘的索引总数
+    static int distance_between_two_index(int begin_index, int end_index, int num_v);
+
+    static vector<int> sort_unread_indexs(int head, vector<int> read_queue_indexs, int num_v);
+
+
 public:
     // 更新对应时间片的token消耗
     // 输入的 actions 是时间片序列，每个时间片包含一个动作序列
@@ -36,18 +45,9 @@ public:
     // 返回值：返回更新后的 tokens
     static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1, int index = -1, int num = 1);
 
-    // 已知一个硬盘的磁头位置，将要读取的所有块的索引，修改传入的action_queue，增加动作到相应时间片中。num v是每个硬盘的存储单元数量
-    static void calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G);
-
     // 计算每个硬盘的block任务队列
     static vector<vector<int>> calculate_blocks_queue(unordered_map<int, Object> &object_unread_ids, vector<Disk> &disks, int time, int num_v, int G, int num_T);
 
-    // 计算硬盘两点之间消耗的时间片
-    static int cost_between_two_index(int head_index, int target_index, vector<int> read_queue_indexs, int current_time, int num_v, int G, int max_T);
-
-    // 计算硬盘中两个索引之间的距离，num_v是该硬盘的索引总数
-    static int distance_between_two_index(int begin_index, int end_index, int num_v);
-
-    static vector<int> sort_unread_indexs(int head, vector<int> read_queue_indexs, int num_v);
+    // 已知一个硬盘的磁头位置，将要读取的所有块的索引，修改传入的action_queue，增加动作到相应时间片中。num v是每个硬盘的存储单元数量
+    static void calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G);
 };
-

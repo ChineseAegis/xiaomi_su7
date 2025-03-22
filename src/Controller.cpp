@@ -1,12 +1,12 @@
-#include"Controller.h"
+#include "Controller.h"
 
 void Controller::global_pre_proccess()
 {
     scanf("%d%d%d%d%d", &num_T, &num_tag, &num_disk, &num_v, &G);
-    num_T+=EXTRA_TIME;
+    num_T += EXTRA_TIME;
     for (int i = 0; i < num_disk; i++)
     {
-        disks.push_back(Disk(num_v,i));
+        disks.push_back(Disk(num_v, i));
     }
 
     for (int i = 1; i <= num_tag; i++)
@@ -42,7 +42,7 @@ void Controller::global_pre_proccess()
     printf("OK\n");
     fflush(stdout);
 
-    disk_actions.resize(num_disk,Action_queue(num_T,G));
+    disk_actions.resize(num_disk, Action_queue(num_T, G));
 }
 
 void Controller::timestamp_action()
@@ -60,7 +60,7 @@ void Controller::delete_action()
     int abort_num = 0;
     vector<int> delete_ids;
 
-    vector<pair<int,vector<int>>> object_read_failed_ids;//存储读取失败的请求,第一个int是对象id，第二个数组是存放请求id的数组
+    vector<pair<int, vector<int>>> object_read_failed_ids; // 存储读取失败的请求,第一个int是对象id，第二个数组是存放请求id的数组
 
     scanf("%d", &n_delete);
     for (int i = 0; i < n_delete; i++)
@@ -71,9 +71,9 @@ void Controller::delete_action()
         if (object_unread_ids.find(delete_id - 1) != object_unread_ids.end())
         {
             vector<int> request_ids = object_unread_ids.find(delete_id - 1)->second;
-            object_read_failed_ids.push_back(make_pair(delete_id - 1,request_ids));
+            object_read_failed_ids.push_back(make_pair(delete_id - 1, request_ids));
             object_unread_ids.erase(delete_id - 1);
-            abort_num+=request_ids.size();
+            abort_num += request_ids.size();
         }
     }
 
@@ -81,13 +81,16 @@ void Controller::delete_action()
 
     for (int i = 0; i < object_read_failed_ids.size(); i++)
     {
-        for(auto& id : object_read_failed_ids[i].second)
+        for (auto &id : object_read_failed_ids[i].second)
         {
-            printf("%d\n", id+1);
+            printf("%d\n", id + 1);
         }
-        
     }
     object_read_failed_ids.clear();
+    if(abort_num>0)
+    {
+        this->calculate_actions();
+    }
     fflush(stdout);
 }
 
@@ -109,11 +112,11 @@ void Controller::write_action()
         for (int j = 0; j < REP_NUM; j++)
         {
             int disk_id = result.id[j];
-            printf("%d", disk_id+1);
+            printf("%d", disk_id + 1);
             for (int k = 0; k < size; k++)
             {
                 int index = result.indexs[j][k];
-                printf(" %d", index+1);
+                printf(" %d", index + 1);
             }
             printf("\n");
         }
@@ -127,38 +130,45 @@ void Controller::read_action()
     int n_read;
     int request_id, object_id;
     scanf("%d", &n_read);
-    for (int i = 1; i <= n_read; i++)
+    for (int i = 0; i < n_read; i++)
     {
         scanf("%d%d", &request_id, &object_id);
-        deal_read_request(object_id-1,request_id-1);
+        deal_read_request(object_id - 1, request_id - 1);
     }
-
+    if(n_read>0)
+    {
+        this->calculate_actions();
+    }
     // 输出动作
     for (int i = 0; i < disk_actions.size(); i++)
     {
         vector<string> actions = disk_actions[i].get_actions();
         string s = actions[current_time];
-        if(s.size()>0&&s[0]!='j'){
+        string s1 = s;
+        if (s.size() > 0 && s[0] != 'j')
+        {
             s += "#";
-        }else if(s.size()==0)
+        }
+        else if (s.size() == 0)
         {
             s += "#";
         }
         const char *output = s.c_str();
         printf("%s\n", output);
+        this->execute_actions(i,s1);
     }
 
+    printf("%d\n", this->request_success_num);
 
-    printf("%d\n",this->request_success_num);
-
-    for(auto& request:this->object_read_sucess_ids)
+    for (auto &request : this->object_read_sucess_ids)
     {
-        for(auto& request_id:request.second)
+        for (auto &request_id : request.second)
         {
-            printf("%d\n",request_id+1);
+            printf("%d\n", request_id + 1);
         }
     }
-    this->request_success_num=0;
+    this->request_success_num = 0;
+    object_read_sucess_ids.clear();
 
     fflush(stdout);
 }
@@ -178,7 +188,7 @@ Block *Controller::write_block_to_disk(int disk_id, int index, int object_id, in
     {
         return nullptr;
     }
-    if (disks[disk_id].units[index]!=nullptr)
+    if (disks[disk_id].units[index] != nullptr)
     {
         return nullptr;
     }
@@ -208,7 +218,7 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
     {
         indexs[i].resize(size);
     }
-    
+
     for (int i = 0; i < REP_NUM; i++)
     {
         int disk_id = disk_pair_ids[i].first;
@@ -218,9 +228,9 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
             if (!count)
             {
                 break;
-            }        
-            //throw std::runtime_error(to_string(disk_id));
-            if (disks[disk_id].units[j]==nullptr)
+            }
+            // throw std::runtime_error(to_string(disk_id));
+            if (disks[disk_id].units[j] == nullptr)
             {
                 indexs[i][size - count] = j;
                 p_blocks[i][size - count] = write_block_to_disk(disk_id, j, object_id, size - count);
@@ -267,14 +277,66 @@ bool Controller::delete_object_from_disk(int object_id)
     return true;
 }
 
-void Controller::deal_read_request(int object_id,int request_id)
+void Controller::deal_read_request(int object_id, int request_id)
 {
-    if(this->object_unread_ids.find(object_id)!=object_unread_ids.end())
+    if (this->object_unread_ids.find(object_id) != object_unread_ids.end())
     {
         object_unread_ids[object_id].push_back(request_id);
-    }else{
+    }
+    else
+    {
         vector<int> request_ids;
         request_ids.push_back(request_id);
-        object_unread_ids.insert(make_pair(object_id,request_ids));
+        object_unread_ids.insert(make_pair(object_id, request_ids));
+    }
+}
+
+void Controller::calculate_actions()
+{
+    unordered_map<int, Object> temp_object_unread_ids;
+    for (auto &object_id : this->object_unread_ids)
+    {
+        Object object = this->objects.at(object_id.first);
+        temp_object_unread_ids.insert(make_pair(object_id.first, object));
+        object_unread_id_block_count.insert(make_pair(object_id.first, 0));
+    }
+    vector<vector<int>> result = Calculate::calculate_blocks_queue(temp_object_unread_ids, disks, current_time, num_v, G, num_T);
+    for (int i = 0; i < result.size(); i++)
+    {
+        Calculate::calculate_actions(disks[i].head, result[i], this->disk_actions[i], current_time, num_v, G);
+    }
+}
+
+void Controller::execute_actions(int disk_id, string action)
+{
+    if (action.size() > 0 && action[0] == 'j')
+    {
+        disks[disk_id].head = (disks[disk_id].head + this->G) % num_v;
+    }
+    else
+    {
+        for (char &c : action)
+        {
+            if (c == 'p')
+            {
+                disks[disk_id].head = (disks[disk_id].head + 1) % num_v;
+            }
+            else if (c == 'r')
+            {
+                Block *block = disks[disk_id].units[disks[disk_id].head];
+                if (object_unread_ids.find(block->object_id) != object_unread_ids.end())
+                {
+                    object_unread_id_block_count[block->object_id] += 1;
+                    if (object_unread_id_block_count[block->object_id] == objects.at(block->object_id).size)
+                    {
+                        object_read_sucess_ids.insert(make_pair(block->object_id, object_unread_ids[block->object_id]));
+                        this->request_success_num+=object_unread_ids[block->object_id].size();
+                        object_unread_ids.erase(block->object_id);
+                        object_unread_id_block_count.erase(block->object_id);
+                    }
+                }
+                disks[disk_id].head = (disks[disk_id].head + 1) % num_v;
+            }
+        }
     }
 }

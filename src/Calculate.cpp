@@ -1,4 +1,4 @@
-#include"Calculate.h"
+#include "Calculate.h"
 
 int Calculate::calculate_num_pre_read_action(const vector<string> &actions, int time, int index)
 {
@@ -90,7 +90,7 @@ vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vec
             tokens[i] = calculate_tokens(all_actions[i], G, all_actions, i);
         }
     }
-    else if (time && !index)
+    else if (time>=0 && index==-1)
     {
         // 更新指定时间片
         if (time >= 0 && time < static_cast<int>(all_actions.size()))
@@ -142,7 +142,7 @@ vector<vector<int>> Calculate::calculate_blocks_queue(unordered_map<int, Object>
     for (auto &object_pair : object_unread_ids)
     {
         const Object &object = object_pair.second;
-        int block_num = object.blocks.size();
+        int block_num = object.size;
         vector<int> record;
         record.resize(block_num, INT_MAX);
         vector<pair<int, int>> disk_ids;
@@ -172,44 +172,55 @@ vector<vector<int>> Calculate::calculate_blocks_queue(unordered_map<int, Object>
 void Calculate::calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G)
 {
 
-    sort_unread_indexs(head_index,read_queue_indexs,num_v);
+    read_queue_indexs = sort_unread_indexs(head_index, read_queue_indexs, num_v);
     int n = read_queue_indexs.size();
-    for (size_t i = 0; i < n;i++){
-        int distance = Calculate::distance_between_two_index(head_index,read_queue_indexs[i],num_v);
-        int action_tokens=distance+action_queue.get_action_tokens(current_time);
-        if(action_tokens>G){
-            
-            if(action_queue.get_action_tokens(current_time)==0){
+    action_queue.set_current_time(current_time);
+    for (size_t i = 0; i < n; i++)
+    {
+        int distance = Calculate::distance_between_two_index(head_index, read_queue_indexs[i], num_v);
+        int action_tokens = distance + action_queue.get_action_tokens(current_time);
+        if (action_tokens > G)
+        {
+            if (action_queue.get_action_tokens(current_time) == 0)
+            {
                 action_queue.add_jump_action(distance);
-                current_time++;
+                action_queue.current_time_plus_one();
             }
-            else{
-                int rest_tokens = action_tokens-G;
-                
-                if(rest_tokens<G){
-                    int move = G-action_queue.get_action_tokens(current_time);
+            else
+            {
+                int rest_tokens = action_tokens - G;
+
+                if (rest_tokens < G)
+                {
+                    int move = G - action_queue.get_action_tokens(current_time);
                     action_queue.add_pass_action(move);
-                    current_time++;
-                    action_queue.add_pass_action(rest_tokens); 
+                    action_queue.current_time_plus_one();
+                    action_queue.add_pass_action(rest_tokens);
                 }
-                else{
-                    current_time++; 
+                else
+                {
+                    action_queue.current_time_plus_one();
                     action_queue.add_jump_action(distance);
-                    current_time++;
-                } 
+                    action_queue.current_time_plus_one();
+                }
             }
         }
-        else{            
-            action_queue.add_pass_action(distance);
+        else
+        {
+            int result=action_queue.add_pass_action(distance);
+            
         }
-        action_queue.add_read_action(1);
         int decision = action_queue.add_read_action(1); // 用于判断是否读取超过大小
-        if (decision!=0&&decision!=-1){//超过大小
-            action_queue.delete_last_action(); 
-            current_time++;
+        if (decision != 0 && decision != -1)
+        { // 超过大小
+            action_queue.current_time_plus_one();
             action_queue.add_read_action(1);
         }
+        if(i+1<n)
+        {
         head_index = read_queue_indexs[i]+1;
+        }
+        
     }
 }
 
@@ -238,4 +249,5 @@ vector<int> Calculate::sort_unread_indexs(int head, vector<int> read_queue_index
 {
     sort(read_queue_indexs.begin(), read_queue_indexs.end(), [head, &read_queue_indexs, num_v](int a, int b)
          { return distance_between_two_index(head, a, num_v) < distance_between_two_index(head, b, num_v); });
+    return read_queue_indexs;
 }

@@ -49,6 +49,12 @@ public:
 
     unordered_map<int,vector<int>> object_unread_ids; // 存储已经请求读取，但还没有读取的对象,第一个int是对象id，第二个数组是存放请求id的数组
 
+    unordered_map<int,int> object_unread_id_block_count;// 记录对象有几个块已被读取，第一个int是对象id，第二个int是已被读取的块的数量，初始为0
+
+    unordered_map<int,pair<int,vector<int>>> object_read_requests;//还未完成的读取请求，第一个int是请求id，第二个元组的第一个元素是object id，第二个元素是object对应的block数组，0代表未被读取，1代表已被读取
+
+    
+
     int request_success_num=0;//读取成功但还没有上报的请求的个数
     unordered_map<int,vector<int>> object_read_sucess_ids;   // 存储已经读取成功，但还没有上报的对象,第一个int是对象id，第二个数组是存放请求id的数组
     
@@ -74,6 +80,10 @@ public:
 
     //将读写请求存储到map
     void deal_read_request(int object_id,int request_id);
+
+    void calculate_actions();
+
+    void execute_actions(int disk_id,string action);
 
     void global_pre_proccess();
 
