@@ -39,7 +39,7 @@ void Action_queue::check_back_read_tokens(int time)
 
 int Action_queue::current_time_plus_one()
     {
-        if (current_index + 1 <= _actions.size())
+        if (current_index + 1 < _actions.size())
         {
             return ++current_index;
         }
@@ -80,10 +80,11 @@ int Action_queue::add_pass_action(int num,int index)
     {
         auto it = _actions[current_index].begin()+index;
         _actions[current_index].insert(it, num, 'p');
-        _tokens = Calculate::recalculate_tokens(_actions, _tokens, G,current_index,index);
+        _tokens = Calculate::recalculate_tokens(_actions, _tokens, G,current_index,index,num);
     }
     else
     {
+        index = _actions[current_index].size();
         auto it = _actions[current_index].end();
         _actions[current_index].insert(it, num, 'p');
         _tokens[current_index] += num;
@@ -103,19 +104,27 @@ int Action_queue::add_pass_action(int num,int index)
 int Action_queue::add_read_action(int num,int index)
 {
     int t_token=_tokens[current_index];
-    if (index)
+    if (index>=0)
     {
         auto it = _actions[current_index].begin()+index;
         _actions[current_index].insert(it, num, 'r');
-        _tokens = Calculate::recalculate_tokens(_actions, _tokens, current_index, G, index);
-        return true;
+        _tokens = Calculate::recalculate_tokens(_actions, _tokens, G,current_index, index);
     }
     else
     {
+        index = _actions[current_index].size();
         auto it = _actions[current_index].end();
         _actions[current_index].insert(it, num, 'r');
-        _tokens = Calculate::recalculate_tokens(_actions, _tokens, G,current_index, _actions.size()-1);
-        return true;
+        _tokens = Calculate::recalculate_tokens(_actions, _tokens, G,current_index, index,num);
+    }
+    int token = _tokens[current_index];
+    if(_tokens[current_index]>G)
+    {
+        this->delete_action(index,index+num);
+        _tokens[current_index]=t_token;
+        return token-G;
+    }else{
+        return 0;
     }
 }
 
@@ -123,19 +132,24 @@ bool Action_queue::add_jump_action(int distance)
 {
     if (_actions[current_index].size() > 0)
     {
-        return -1;
+        return false;
     }
     else
     {
         _actions[current_index] = "j " + to_string(distance);
     }
     _tokens[current_index] = G;
+    return true;
 }
 
 bool Action_queue::delete_action(int begin,int end)
 {
+    if (begin < 0 || end > _actions[current_index].size() || begin >= end)
+    {
+    return false;
+    }
     auto begin_it=_actions[current_index].begin()+begin;
-    auto end_it=_actions[current_index].begin()+begin+end;
+    auto end_it=_actions[current_index].begin()+end;
     _actions[current_index].erase(begin_it,end_it);
     _tokens=Calculate::recalculate_tokens(_actions,_tokens,G,current_index);
     return true;
