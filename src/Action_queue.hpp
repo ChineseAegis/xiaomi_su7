@@ -21,6 +21,7 @@ class Action_queue
     int current_index = 0;
     void check_end_index(int time);
     void check_back_read_tokens(int time);
+    
 
 public:
     int G;
@@ -66,7 +67,13 @@ public:
     // 删除当前时间片的动作，删除string中begin，end之间的动作，左闭右开。
     bool delete_action(int begin,int end);
 
+    //删除当前时间片的动作，删除最后一个动作
+    bool delete_last_action();
+
+    
 };
+
+
 
 void Action_queue::check_end_index(int time)
 {
@@ -209,6 +216,15 @@ bool Action_queue::delete_action(int begin,int end)
     return true;
 }
 
+bool Action_queue::delete_last_action(){
+    if (_actions[current_index].empty()){
+        return false;
+    }
+    _actions[current_index].pop_back();
+    _tokens=Calculate::recalculate_tokens(_actions,_tokens,G,current_index);
+    return true;
+}
+
 int Action_queue::current_time_sub_one(bool current_time_sub_one)
 {
     _actions[current_index] = "";
@@ -219,3 +235,4 @@ int Action_queue::current_time_sub_one(bool current_time_sub_one)
     }
     return current_index;
 }
+

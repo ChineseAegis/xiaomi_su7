@@ -9,13 +9,12 @@ using namespace std;
 #include "Controller.hpp"
 #include "Action_queue.hpp"
 
-
 class Calculate
 {
-    //计算指定时间片、索引的某个r动作之前有几个r动作。
+    // 计算指定时间片、索引的某个r动作之前有几个r动作。
     static int calculate_num_pre_read_action(const vector<string> &actions, int time, int index);
 
-    //计算连续几步read所消耗的token
+    // 计算连续几步read所消耗的token
     static int computeValue(int base, double factor, int times);
 
     // 根据行为计算tokens的方式
@@ -30,17 +29,12 @@ public:
     // 返回值：返回更新后的 tokens
     static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1, int index = -1);
 
-    //重载版本，计算指定时间范围内的tokens，左闭右开区间
+    // 重载版本，计算指定时间范围内的tokens，左闭右开区间
     static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int begin_time, int end_time);
 
-    //已知一个硬盘的磁头位置，将要读取的所有块的索引，修改传入的action_queue，增加动作到相应时间片中。num v是每个硬盘的存储单元数量
-    static void calculate_actions(int head_index,vector<int> read_queue_indexs,Action_queue& action_queue,int current_time,int num_v,int G);
-    
-
-    
+    // 已知一个硬盘的磁头位置，将要读取的所有块的索引，修改传入的action_queue，增加动作到相应时间片中。num v是每个硬盘的存储单元数量
+    static void calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G);
 };
-
-
 
 int Calculate::calculate_num_pre_read_action(const vector<string> &actions, int time, int index)
 {
@@ -140,7 +134,7 @@ vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vec
     {
         if (all_actions[time][index] == 'p')
         {
-            
+
             tokens[time] += 1;
         }
         else if (all_actions[time][index] == 'r')
@@ -154,27 +148,91 @@ vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vec
 
 vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int begin_time, int end_time)
 {
-    for (int i = begin_time; i < end_time-begin_time; i++)
-        {
-            tokens[i] = calculate_tokens(all_actions[i], G, all_actions, i);
-        }
+    for (int i = begin_time; i < end_time - begin_time; i++)
+    {
+        tokens[i] = calculate_tokens(all_actions[i], G, all_actions, i);
+    }
 }
 
+void calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G)
+// {
 
-void calculate_actions(int head_index,vector<int> read_queue_indexs,Action_queue& action_queue,int current_time,int num_v,int G)
+//     int n = read_queue_indexs.size();
+
+//     for (size_t i = 0; i < n; i++)
+//     {
+//         int distance = read_queue_indexs[i] - head_index;
+//         while (distance <= G)
+//         {
+//             if (distance + 64 <= G)
+//             {
+//                 action_queue.add_pass_action(distance);
+//                 action_queue.add_read_action(1);    
+//             }
+//             else
+//             {
+//                 action_queue.add_pass_action(distance);
+//                 break;
+//             }
+//             // head_index = read_queue_indexs[i];
+//             int action_tokens = action_queue.get_action_tokens(current_time);
+//             distance = action_tokens;
+//         }
+//         current_time += 1;
+        
+        
+//     }    
+
+// }
+
+// {
+//     int index = 0;//记录在一个时间片下连续读取了几个块
+//     int n = read_queue_indexs.size();
+//     int action_tokens = action_queue.get_action_tokens(current_time); // distance为磁头到当前块耗费的令牌数
+//     for (size_t i = 0; i < n;i++){
+//         int distance = read_queue_indexs[i] - head_index;
+//         action_tokens+=distance;
+//         while (action_tokens <= G)
+//         {
+//             action_queue.add_pass_action(distance);
+//             action_queue.add_read_action(1);
+//             int decision = action_queue.add_read_action(1);//用于判断是否读取超过大小
+//             if (decision!=0&&decision!=-1){
+//                 action_queue.delete_action(1, 2);
+//             }
+//             else{
+//                 break;
+//             }
+
+//         }
+
+//     }
+        
+    
+
+// }
+
 {
-    for (size_t i = 0; i < read_queue_indexs.size();i++){
+    
+    int n = read_queue_indexs.size();
+    for (size_t i = 0; i < n;i++){
         int distance = read_queue_indexs[i] - head_index;
-        if(distance<=G){
-            if(distance+64<=G){
-                action_queue._actions[current_time] = add_pass_action(current_time);
-            }
-            else{
-
-            }
+        int action_tokens=distance+action_queue.get_action_tokens(current_time);
+        if(action_tokens>G){
+            action_queue.add_jump_action(distance);
+            current_time++;
+            head_index = read_queue_indexs[i];
         }
         else{
-
+            head_index = read_queue_indexs[i];
+            action_queue.add_pass_action(distance);
+        }
+        action_queue.add_read_action(1);
+        int decision = action_queue.add_read_action(1);//用于判断是否读取超过大小
+        if (decision!=0&&decision!=-1){//超过大小
+            action_queue.delete_last_action(); 
+            current_time++;
+            action_queue.add_read_action(1);
         }
     }
 }
