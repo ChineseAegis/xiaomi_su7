@@ -1,1 +1,1 @@
-{"error_code":"interaction_successful","score":"0.0000","message":"Interaction successful, score: 0.0000 (0.0000%), used: 0.0120s."}
+{"error_code":"read_object_block_not_loaded","score":"0.0000","timestamp":"3","action":"read","role":"player","request":"6","object":"2","message":"Object 2, block 1 is not loaded"}
