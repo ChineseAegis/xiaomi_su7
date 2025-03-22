@@ -7,7 +7,7 @@
 #include <string>
 #include <list>
 #include <deque>
-#include "Strategy.hpp"
+#include "Calculate.hpp"
 #include <unordered_map>
 #include <unordered_set>
 #include "Action_queue.hpp"

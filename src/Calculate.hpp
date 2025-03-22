@@ -222,7 +222,8 @@ vector<vector<int>> Calculate::calculate_blocks_queue(unordered_map<int, Object>
 
 void Calculate::calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G)
 {
-    
+
+    sort_unread_indexs(head_index,read_queue_indexs,num_v);
     int n = read_queue_indexs.size();
     for (size_t i = 0; i < n;i++){
         int distance = Calculate::distance_between_two_index(head_index,read_queue_indexs[i],num_v);

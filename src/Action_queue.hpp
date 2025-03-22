@@ -3,7 +3,7 @@
 #include <vector>
 #include "Object.hpp"
 #include <string>
-#include "Strategy.hpp"
+#include "Calculate.hpp"
 
 using namespace std;
 
