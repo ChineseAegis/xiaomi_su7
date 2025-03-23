@@ -74,7 +74,7 @@ public:
     int add_read_action(int num,int index = -1);
 
     // 向该硬盘当前时间片加入jump动作，加完后这个时间片就满了，但是该函数不会自动将当前时间片向右移动。
-    bool add_jump_action(int distance);
+    bool add_jump_action(int target_index);
 
     // 删除当前时间片的动作，删除string中begin，end之间的动作，左闭右开。
     bool delete_action(int begin,int end);
