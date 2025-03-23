@@ -1,1 +1,0 @@
-{"error_code":"read_object_block_not_loaded","score":"0.0000","timestamp":"3","action":"read","role":"player","request":"6","object":"2","message":"Object 2, block 1 is not loaded"}
