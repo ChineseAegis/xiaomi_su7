@@ -90,7 +90,7 @@ vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vec
             tokens[i] = calculate_tokens(all_actions[i], G, all_actions, i);
         }
     }
-    else if (time>=0 && index==-1)
+    else if (time >= 0 && index == -1)
     {
         // 更新指定时间片
         if (time >= 0 && time < static_cast<int>(all_actions.size()))
@@ -122,26 +122,40 @@ vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vec
     return tokens;
 }
 
-vector<vector<int>> Calculate::calculate_blocks_queue(unordered_map<int, Object> &object_unread_ids, vector<Disk> &disks, int time, int num_v, int G, int num_T)
+vector<vector<int>> Calculate::calculate_blocks_queue(const unordered_map<int, pair<int, vector<int>>> &object_read_requests, const unordered_map<int, Object> &objects, vector<Disk> &disks, int time, int num_v, int G, int num_T)
 {
     vector<vector<int>> disk_unread_indexs;
     disk_unread_indexs.resize(disks.size());
     vector<vector<int>> unread_indexs;
     unread_indexs.resize(disks.size());
-    for (auto &object_pair : object_unread_ids)
+    for (auto &object_pair : object_read_requests)
     {
-        const Object &object = object_pair.second;
+        int object_id = object_pair.second.first;
+        const Object &object = objects.at(object_id);
+        vector<int> block_status = object_pair.second.second;
         for (int i = 0; i < REP_NUM; i++)
         {
             for (auto &block : object.blocks[i])
             {
-                unread_indexs[block->disk_id].push_back(block->index);
+                if (block_status[block->id] == 0)
+                {
+                    unread_indexs[block->disk_id].push_back(block->index);
+                }
             }
         }
     }
-    for (auto &object_pair : object_unread_ids)
+    vector<vector<int>> unique_unread_indexs;
+    for(auto& unread_index:unread_indexs)
     {
-        const Object &object = object_pair.second;
+        unordered_set<int> temp(unread_index.begin(),unread_index.end());
+        vector<int> temp2(temp.begin(),temp.end());
+        unique_unread_indexs.push_back(temp2);
+    }
+
+    for (auto &object_pair : object_read_requests)
+    {
+        int object_id = object_pair.second.first;
+        const Object &object = objects.at(object_id);
         int block_num = object.size;
         vector<int> record;
         record.resize(block_num, INT_MAX);
@@ -151,7 +165,7 @@ vector<vector<int>> Calculate::calculate_blocks_queue(unordered_map<int, Object>
         {
             for (auto &block : object.blocks[i])
             {
-                int cost = cost_between_two_index(disks[block->disk_id].head, block->index, unread_indexs[block->disk_id], time, num_v, G, num_T);
+                int cost = cost_between_two_index(disks[block->disk_id].head, block->index, unique_unread_indexs[block->disk_id], time, num_v, G, num_T);
                 if (cost < record[block->id])
                 {
                     record[block->id] = cost;
@@ -162,11 +176,21 @@ vector<vector<int>> Calculate::calculate_blocks_queue(unordered_map<int, Object>
         }
         for (int j = 0; j < block_num; j++)
         {
-            disk_unread_indexs[disk_ids[j].first].push_back(disk_ids[j].second);
+            int disk_id = disk_ids[j].first;
+            int index = disk_ids[j].second;
+            disk_unread_indexs[disk_id].push_back(index);
         }
     }
 
-    return disk_unread_indexs;
+    vector<vector<int>> unique_disk_unread_indexs;
+    for(auto& unread_index:disk_unread_indexs)
+    {
+        unordered_set<int> temp(unread_index.begin(),unread_index.end());
+        vector<int> temp2(temp.begin(),temp.end());
+        unique_disk_unread_indexs.push_back(temp2);
+    }
+
+    return unique_disk_unread_indexs;
 }
 
 void Calculate::calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G)
@@ -183,7 +207,7 @@ void Calculate::calculate_actions(int head_index, vector<int> read_queue_indexs,
         {
             if (action_queue.get_action_tokens(current_time) == 0)
             {
-                action_queue.add_jump_action(distance);
+                action_queue.add_jump_action(read_queue_indexs[i]);
                 action_queue.current_time_plus_one();
             }
             else
@@ -200,15 +224,14 @@ void Calculate::calculate_actions(int head_index, vector<int> read_queue_indexs,
                 else
                 {
                     action_queue.current_time_plus_one();
-                    action_queue.add_jump_action(distance);
+                    action_queue.add_jump_action(read_queue_indexs[i]);
                     action_queue.current_time_plus_one();
                 }
             }
         }
         else
         {
-            int result=action_queue.add_pass_action(distance);
-            
+            int result = action_queue.add_pass_action(distance);
         }
         int decision = action_queue.add_read_action(1); // 用于判断是否读取超过大小
         if (decision != 0 && decision != -1)
@@ -216,11 +239,10 @@ void Calculate::calculate_actions(int head_index, vector<int> read_queue_indexs,
             action_queue.current_time_plus_one();
             action_queue.add_read_action(1);
         }
-        if(i+1<n)
+        if (i + 1 < n)
         {
-        head_index = read_queue_indexs[i]+1;
+            head_index = read_queue_indexs[i] + 1;
         }
-        
     }
 }
 
