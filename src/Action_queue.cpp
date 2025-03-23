@@ -128,7 +128,7 @@ int Action_queue::add_read_action(int num,int index)
     }
 }
 
-bool Action_queue::add_jump_action(int distance)
+bool Action_queue::add_jump_action(int target_index)
 {
     if (_actions[current_index].size() > 0)
     {
@@ -136,7 +136,7 @@ bool Action_queue::add_jump_action(int distance)
     }
     else
     {
-        _actions[current_index] = "j " + to_string(distance);
+        _actions[current_index] = "j " + to_string(target_index);
     }
     _tokens[current_index] = G;
     return true;
