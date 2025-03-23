@@ -46,7 +46,7 @@ public:
     static vector<int> recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time = -1, int index = -1, int num = 1);
 
     // 计算每个硬盘的block任务队列
-    static vector<vector<int>> calculate_blocks_queue(unordered_map<int, Object> &object_unread_ids, vector<Disk> &disks, int time, int num_v, int G, int num_T);
+    static vector<vector<int>> calculate_blocks_queue(const unordered_map<int,pair<int,vector<int>>>& object_read_requests, const unordered_map<int, Object>& objects,vector<Disk> &disks, int time, int num_v, int G, int num_T);
 
     // 已知一个硬盘的磁头位置，将要读取的所有块的索引，修改传入的action_queue，增加动作到相应时间片中。num v是每个硬盘的存储单元数量
     static void calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G);
