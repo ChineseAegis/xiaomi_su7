@@ -55,6 +55,8 @@ public:
 
     vector<deque<int>> block_read_queue;//存储每个硬盘的block读取队列
 
+    vector<int> new_request_ids;//存储新来的读取请求，用于增量计算block读取队列
+
     vector<int> disk_last_head_indexs;
     
 

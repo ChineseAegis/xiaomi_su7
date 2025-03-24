@@ -98,6 +98,12 @@ void Controller::delete_action()
     //object_read_failed_ids.clear();
     if (abort_num > 0)
     {
+        vector<int> temp;
+        new_request_ids.swap(temp);
+        for(auto& it:object_read_requests)
+        {
+            new_request_ids.push_back(it.first);
+        }
         this->calculate_actions();
     }
     fflush(stdout);
@@ -172,7 +178,7 @@ void Controller::read_action()
             {
                 head_index = disk_last_head_indexs[i];
             }
-            //block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v);
+            block_read_queue[i] = Calculate::sort_unread_indexs(head_index, block_read_queue[i], num_v,5);
             disk_last_head_indexs[i] = Calculate::calculate_actions(head_index, block_read_queue[i], this->disk_actions[i], current_time, num_v, G, true);
         }
     }
@@ -339,21 +345,25 @@ void Controller::deal_read_request(int object_id, int request_id)
     }
     object_read_requests.insert(make_pair(request_id, make_pair(object_id, temp)));
     object_unread_requestid_block_count[request_id] = 0;
+    new_request_ids.push_back(request_id);
 }
 
-void Controller::calculate_actions_process_index(int start, int end)
-{
-    for (int i = start; i < end; ++i)
-    {
-        block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v);
-        disk_last_head_indexs[i] = Calculate::calculate_actions(disks[i].head, block_read_queue[i], disk_actions[i], current_time, num_v, G);
-    }
-}
+// void Controller::calculate_actions_process_index(int start, int end)
+// {
+//     for (int i = start; i < end; ++i)
+//     {
+//         block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v,block_read_queue[i].size()>5?5:block_read_queue[i].size());
+//         disk_last_head_indexs[i] = Calculate::calculate_actions(disks[i].head, block_read_queue[i], disk_actions[i], current_time, num_v, G);
+//     }
+// }
 
 void Controller::calculate_actions()
 {
     auto start = std::chrono::high_resolution_clock::now();
-    Calculate::calculate_blocks_queue(object_read_requests, objects, disks, block_read_queue, current_time, num_v, G, num_T);
+    Calculate::calculate_blocks_queue(object_read_requests,new_request_ids, objects, disks, block_read_queue, current_time, num_v, G, num_T);
+
+    vector<int> temp;
+    new_request_ids.swap(temp);
     
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -363,7 +373,7 @@ void Controller::calculate_actions()
     log.close();
     for (int i = 0; i < block_read_queue.size(); i++)
     {
-        block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v);
+        block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v,5);
         disk_last_head_indexs[i] = Calculate::calculate_actions(disks[i].head, block_read_queue[i], this->disk_actions[i], current_time, num_v, G);
     }
     
