@@ -30,6 +30,9 @@ public:
     Action_queue(int num_T, int G):G(G)
     {
         _actions.resize(num_T);
+        for (auto& s : _actions) {
+            s.reserve(G);  // 你可以改成你需要的容量
+        }
         _tokens.resize(num_T, 0);
     }
 
