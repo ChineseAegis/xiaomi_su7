@@ -1,4 +1,7 @@
 #include "Calculate.h"
+#include <chrono>
+#include <fstream>
+
 
 int Calculate::calculate_num_pre_read_action(const vector<string> &actions, int time, int index)
 {
@@ -34,53 +37,31 @@ int Calculate::computeValue(int base, double factor, int times)
     return static_cast<int>(result); // 转换为整数
 }
 
-int Calculate::calculate_tokens(const string &actions, int G, const vector<string> &all_actions, int time)
-{
+int Calculate::calculate_tokens(const string &actions, int G, const vector<string> &all_actions, int time) {
     int token_count = 0;
-    if (actions.size() == 0)
-    {
-        return token_count;
-    }
+    if (actions.empty()) return 0;
+    if (actions[0] == 'j') return G;
 
-    if (actions[0] == 'j')
-    {
-        token_count += G;
-        return token_count;
-    }
-    int pre_num_r = 0;
+    int pre_time_r = calculate_num_pre_read_action(all_actions, time, 0);
+    int current_r_chain = 0;
 
-    for (size_t i = 0; i < actions.size(); i++)
-    {
-        const char &action = actions[i]; // 获取当前时间片的动作序列
-
-        if (action == 'p')
-        {
+    for (size_t i = 0; i < actions.size(); ++i) {
+        const char& action = actions[i];
+        if (action == 'p') {
             token_count += 1;
-            pre_num_r = 0;
-        }
-        else if (action == 'r')
-        {
-            if (i == 0)
-            {
-                pre_num_r = calculate_num_pre_read_action(all_actions, time, i);
-                token_count += max(16, computeValue(64, 0.8, pre_num_r));
-                pre_num_r++;
-            }
-            else
-            {
-                token_count += max(16, computeValue(64, 0.8, pre_num_r));
-                pre_num_r++;
-            }
-        }
-        else
-        {
-            throw invalid_argument("Invalid action in time slice: " + action);
+            pre_time_r = current_r_chain = 0;
+        } else if (action == 'r') {
+            current_r_chain = (i > 0 && actions[i-1] == 'r') ? current_r_chain + 1 : 1;
+            int total_pre_r = pre_time_r + current_r_chain - 1;
+            token_count += max(16, computeValue(64, 0.8, total_pre_r));
+        } else {
+            throw invalid_argument("Invalid action: " + string(1, action));
         }
     }
     return token_count;
 }
 
-vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vector<int> tokens, int G, int time, int index, int num)
+void Calculate::recalculate_tokens(const vector<string> &all_actions, vector<int>& tokens, int G, int time, int index, int num)
 {
     if (time == -1)
     {
@@ -119,39 +100,46 @@ vector<int> Calculate::recalculate_tokens(const vector<string> &all_actions, vec
             tokens[time] = calculate_tokens(all_actions[time], G, all_actions, time);
         }
     }
-    return tokens;
 }
 
-vector<vector<int>> Calculate::calculate_blocks_queue(const unordered_map<int, pair<int, vector<int>>> &object_read_requests, const unordered_map<int, Object> &objects, vector<Disk> &disks, int time, int num_v, int G, int num_T)
-{
-    vector<vector<int>> disk_unread_indexs;
-    disk_unread_indexs.resize(disks.size());
-    vector<vector<int>> unread_indexs;
-    unread_indexs.resize(disks.size());
-    for (auto &object_pair : object_read_requests)
-    {
-        int object_id = object_pair.second.first;
-        const Object &object = objects.at(object_id);
-        vector<int> block_status = object_pair.second.second;
-        for (int i = 0; i < REP_NUM; i++)
-        {
-            for (auto &block : object.blocks[i])
-            {
-                if (block_status[block->id] == 0)
-                {
-                    unread_indexs[block->disk_id].push_back(block->index);
-                }
-            }
-        }
+struct pair_hash {
+    std::size_t operator()(const std::pair<int, int>& p) const {
+        return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1);
     }
-    vector<vector<int>> unique_unread_indexs;
-    for(auto& unread_index:unread_indexs)
-    {
-        unordered_set<int> temp(unread_index.begin(),unread_index.end());
-        vector<int> temp2(temp.begin(),temp.end());
-        unique_unread_indexs.push_back(temp2);
-    }
+};
 
+vector<deque<int>> Calculate::calculate_blocks_queue(const unordered_map<int, pair<int, vector<int>>> &object_read_requests, const unordered_map<int, Object> &objects, vector<Disk> &disks, int time, int num_v, int G, int num_T)
+{  
+    vector<deque<int>> disk_unread_indexs;
+    disk_unread_indexs.resize(disks.size());
+    // vector<vector<int>> unread_indexs;
+    // unread_indexs.resize(disks.size());
+    // for (auto &object_pair : object_read_requests)
+    // {
+    //     int object_id = object_pair.second.first;
+    //     const Object &object = objects.at(object_id);
+    //     vector<int> block_status = object_pair.second.second;
+    //     for (int i = 0; i < REP_NUM; i++)
+    //     {
+    //         for (auto &block : object.blocks[i])
+    //         {
+    //             if (block_status[block->id] == 0)
+    //             {
+    //                 unread_indexs[block->disk_id].push_back(block->index);
+    //             }
+    //         }
+    //     }
+    // }
+    // vector<vector<int>> unique_unread_indexs;
+    // for(auto& unread_index:unread_indexs)
+    // {
+    //     unordered_set<int> temp(unread_index.begin(),unread_index.end());
+    //     vector<int> temp2(temp.begin(),temp.end());
+    //     unique_unread_indexs.push_back(temp2);
+    // }
+
+    //auto start = std::chrono::high_resolution_clock::now();
+    unordered_set<pair<int,int>,pair_hash> blocks;
     for (auto &object_pair : object_read_requests)
     {
         int object_id = object_pair.second.first;
@@ -165,7 +153,11 @@ vector<vector<int>> Calculate::calculate_blocks_queue(const unordered_map<int, p
         {
             for (auto &block : object.blocks[i])
             {
-                int cost = cost_between_two_index(disks[block->disk_id].head, block->index, unique_unread_indexs[block->disk_id], time, num_v, G, num_T);
+                if(object_pair.second.second[block->id]==1)
+                {
+                    continue;
+                }
+                int cost = distance_between_two_index(disks[block->disk_id].head, block->index, num_v);
                 if (cost < record[block->id])
                 {
                     record[block->id] = cost;
@@ -178,27 +170,38 @@ vector<vector<int>> Calculate::calculate_blocks_queue(const unordered_map<int, p
         {
             int disk_id = disk_ids[j].first;
             int index = disk_ids[j].second;
+            if(blocks.find(make_pair(disk_id,index))==blocks.end())
+            {
             disk_unread_indexs[disk_id].push_back(index);
+            blocks.insert(make_pair(disk_id,index));
+            }
         }
     }
+//  auto end = std::chrono::high_resolution_clock::now();
+//     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    vector<vector<int>> unique_disk_unread_indexs;
-    for(auto& unread_index:disk_unread_indexs)
-    {
-        unordered_set<int> temp(unread_index.begin(),unread_index.end());
-        vector<int> temp2(temp.begin(),temp.end());
-        unique_disk_unread_indexs.push_back(temp2);
-    }
+//     std::ofstream log("action_times.log", std::ios::app);
+//     log << "[Time]: " << duration << " ms\n";
+//     log.close();
 
-    return unique_disk_unread_indexs;
+
+    // vector<deque<int>> unique_disk_unread_indexs;
+    // for(auto& unread_index:disk_unread_indexs)
+    // {
+    //     unordered_set<int> temp(unread_index.begin(),unread_index.end());
+    //     deque<int> temp2(temp.begin(),temp.end());
+    //     unique_disk_unread_indexs.push_back(temp2);
+    // }
+
+    return disk_unread_indexs;
 }
 
-void Calculate::calculate_actions(int head_index, vector<int> read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G)
+int Calculate::calculate_actions(int head_index, deque<int>& read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G,bool is_continue)
 {
 
-    read_queue_indexs = sort_unread_indexs(head_index, read_queue_indexs, num_v);
-    int n = read_queue_indexs.size();
-    action_queue.set_current_time(current_time);
+    //read_queue_indexs = sort_unread_indexs(head_index, read_queue_indexs, num_v);
+    int n = (read_queue_indexs.size()<7) ? read_queue_indexs.size():7;
+    action_queue.set_current_time(current_time,is_continue);
     for (size_t i = 0; i < n; i++)
     {
         int distance = Calculate::distance_between_two_index(head_index, read_queue_indexs[i], num_v);
@@ -239,14 +242,16 @@ void Calculate::calculate_actions(int head_index, vector<int> read_queue_indexs,
             action_queue.current_time_plus_one();
             action_queue.add_read_action(1);
         }
-        if (i + 1 < n)
-        {
             head_index = read_queue_indexs[i] + 1;
-        }
     }
+    for(int i=0;i<n;i++)
+    {
+      read_queue_indexs.pop_front();
+    }
+    return head_index;
 }
 
-int Calculate::cost_between_two_index(int head_index, int target_index, vector<int> read_queue_indexs, int current_time, int num_v, int G, int max_T)
+int Calculate::cost_between_two_index(int head_index, int target_index, deque<int> read_queue_indexs, int current_time, int num_v, int G, int max_T)
 {
     read_queue_indexs.push_back(target_index);
     Action_queue actions(max_T, G);
@@ -267,9 +272,24 @@ int Calculate::distance_between_two_index(int begin_index, int end_index, int nu
     return (end_index - begin_index + num_v) % num_v;
 }
 
-vector<int> Calculate::sort_unread_indexs(int head, vector<int> read_queue_indexs, int num_v)
-{
-    sort(read_queue_indexs.begin(), read_queue_indexs.end(), [head, &read_queue_indexs, num_v](int a, int b)
-         { return distance_between_two_index(head, a, num_v) < distance_between_two_index(head, b, num_v); });
-    return read_queue_indexs;
+deque<int> Calculate::sort_unread_indexs(int head, deque<int> indexes, int num_v, int n) {
+    vector<pair<int, int>> indexed_dist;
+    indexed_dist.reserve(indexes.size());
+
+    for (int idx : indexes)
+        indexed_dist.emplace_back(idx, distance_between_two_index(head, idx, num_v));
+    
+    // 只对前 n 个进行排序
+    if (n > indexed_dist.size()) n = indexed_dist.size();
+    std::partial_sort(indexed_dist.begin(), indexed_dist.begin() + n, indexed_dist.end(),
+        [](const auto& a, const auto& b) {
+            return a.second < b.second;
+        });
+
+    deque<int> sorted;
+    for (int i = 0; i < n; ++i)
+        sorted.push_back(indexed_dist[i].first);
+
+    return sorted;
 }
+
