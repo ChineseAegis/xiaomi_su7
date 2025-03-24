@@ -53,7 +53,9 @@ public:
 
     unordered_map<int,pair<int,vector<int>>> object_read_requests;//还未完成的读取请求，第一个int是请求id，第二个元组的第一个元素是object id，第二个元素是object对应的block数组，0代表未被读取，1代表已被读取
 
+    vector<deque<int>> block_read_queue;//存储每个硬盘的block读取队列
 
+    vector<int> disk_last_head_indexs;
     
 
     int request_success_num=0;//读取成功但还没有上报的请求的个数
@@ -69,6 +71,7 @@ public:
 
     Controller()
     {
+        
     }
 
     // 将文件写入，并返回结果，结果中有写入位置的详细信息，object_id是对象id，size是对象大小，tag是对象标签
@@ -82,9 +85,11 @@ public:
     //将读写请求存储到map
     void deal_read_request(int object_id,int request_id);
 
+    void calculate_actions_process_index(int start,int end);
+
     void calculate_actions();
 
-    void execute_actions(int disk_id,string action);
+    void execute_actions(int disk_id,const string& action);
 
     void global_pre_proccess();
 
