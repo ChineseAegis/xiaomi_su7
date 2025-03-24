@@ -159,7 +159,7 @@ int Calculate::calculate_actions(int head_index, deque<int>& read_queue_indexs, 
 {
 
     //read_queue_indexs = sort_unread_indexs(head_index, read_queue_indexs, num_v);
-    int n = (read_queue_indexs.size()<1) ? read_queue_indexs.size():1;
+    int n = (read_queue_indexs.size()<10) ? read_queue_indexs.size():10;
     action_queue.set_current_time(current_time,is_continue);
     for (size_t i = 0; i < n; i++)
     {
@@ -171,6 +171,7 @@ int Calculate::calculate_actions(int head_index, deque<int>& read_queue_indexs, 
             {
                 action_queue.add_jump_action(read_queue_indexs[i]);
                 action_queue.current_time_plus_one();
+                current_time++;
             }
             else
             {
@@ -181,12 +182,15 @@ int Calculate::calculate_actions(int head_index, deque<int>& read_queue_indexs, 
                     int move = G - action_queue.get_action_tokens(current_time);
                     action_queue.add_pass_action(move);
                     action_queue.current_time_plus_one();
+                    current_time++;
                     action_queue.add_pass_action(rest_tokens);
                 }
                 else
                 {
                     action_queue.current_time_plus_one();
+                    current_time++;
                     action_queue.add_jump_action(read_queue_indexs[i]);
+                    current_time++;
                     action_queue.current_time_plus_one();
                 }
             }
@@ -199,6 +203,7 @@ int Calculate::calculate_actions(int head_index, deque<int>& read_queue_indexs, 
         if (decision != 0 && decision != -1)
         { // 超过大小
             action_queue.current_time_plus_one();
+            current_time++;
             action_queue.add_read_action(1);
         }
             head_index = read_queue_indexs[i] + 1;
