@@ -108,37 +108,11 @@ struct pair_hash {
     }
 };
 
-vector<deque<int>> Calculate::calculate_blocks_queue(const unordered_map<int, pair<int, vector<int>>> &object_read_requests, const unordered_map<int, Object> &objects, vector<Disk> &disks, int time, int num_v, int G, int num_T)
+void Calculate::calculate_blocks_queue(const unordered_map<int, pair<int, vector<int>>> &object_read_requests, const unordered_map<int, Object> &objects, vector<Disk> &disks, vector<deque<int>>& disk_unread_indexs,int time, int num_v, int G, int num_T)
 {  
-    vector<deque<int>> disk_unread_indexs;
-    disk_unread_indexs.resize(disks.size());
-    // vector<vector<int>> unread_indexs;
-    // unread_indexs.resize(disks.size());
-    // for (auto &object_pair : object_read_requests)
-    // {
-    //     int object_id = object_pair.second.first;
-    //     const Object &object = objects.at(object_id);
-    //     vector<int> block_status = object_pair.second.second;
-    //     for (int i = 0; i < REP_NUM; i++)
-    //     {
-    //         for (auto &block : object.blocks[i])
-    //         {
-    //             if (block_status[block->id] == 0)
-    //             {
-    //                 unread_indexs[block->disk_id].push_back(block->index);
-    //             }
-    //         }
-    //     }
-    // }
-    // vector<vector<int>> unique_unread_indexs;
-    // for(auto& unread_index:unread_indexs)
-    // {
-    //     unordered_set<int> temp(unread_index.begin(),unread_index.end());
-    //     vector<int> temp2(temp.begin(),temp.end());
-    //     unique_unread_indexs.push_back(temp2);
-    // }
-
-    //auto start = std::chrono::high_resolution_clock::now();
+    vector<deque<int>> temp;
+    temp.resize(disks.size());
+    disk_unread_indexs.swap(temp);
     unordered_set<pair<int,int>,pair_hash> blocks;
     for (auto &object_pair : object_read_requests)
     {
@@ -177,30 +151,15 @@ vector<deque<int>> Calculate::calculate_blocks_queue(const unordered_map<int, pa
             }
         }
     }
-//  auto end = std::chrono::high_resolution_clock::now();
-//     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-//     std::ofstream log("action_times.log", std::ios::app);
-//     log << "[Time]: " << duration << " ms\n";
-//     log.close();
 
 
-    // vector<deque<int>> unique_disk_unread_indexs;
-    // for(auto& unread_index:disk_unread_indexs)
-    // {
-    //     unordered_set<int> temp(unread_index.begin(),unread_index.end());
-    //     deque<int> temp2(temp.begin(),temp.end());
-    //     unique_disk_unread_indexs.push_back(temp2);
-    // }
-
-    return disk_unread_indexs;
 }
 
 int Calculate::calculate_actions(int head_index, deque<int>& read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G,bool is_continue)
 {
 
     //read_queue_indexs = sort_unread_indexs(head_index, read_queue_indexs, num_v);
-    int n = (read_queue_indexs.size()<7) ? read_queue_indexs.size():7;
+    int n = (read_queue_indexs.size()<1) ? read_queue_indexs.size():1;
     action_queue.set_current_time(current_time,is_continue);
     for (size_t i = 0; i < n; i++)
     {
@@ -272,24 +231,17 @@ int Calculate::distance_between_two_index(int begin_index, int end_index, int nu
     return (end_index - begin_index + num_v) % num_v;
 }
 
-deque<int> Calculate::sort_unread_indexs(int head, deque<int> indexes, int num_v, int n) {
+deque<int> Calculate::sort_unread_indexs(int head, deque<int> indexes, int num_v) {
     vector<pair<int, int>> indexed_dist;
-    indexed_dist.reserve(indexes.size());
-
     for (int idx : indexes)
         indexed_dist.emplace_back(idx, distance_between_two_index(head, idx, num_v));
     
-    // 只对前 n 个进行排序
-    if (n > indexed_dist.size()) n = indexed_dist.size();
-    std::partial_sort(indexed_dist.begin(), indexed_dist.begin() + n, indexed_dist.end(),
-        [](const auto& a, const auto& b) {
-            return a.second < b.second;
-        });
-
+    sort(indexed_dist.begin(), indexed_dist.end(), 
+        [](auto& a, auto& b) { return a.second < b.second; });
+    
     deque<int> sorted;
-    for (int i = 0; i < n; ++i)
-        sorted.push_back(indexed_dist[i].first);
-
+    for (auto& p : indexed_dist)
+        sorted.push_back(p.first);
     return sorted;
 }
 
