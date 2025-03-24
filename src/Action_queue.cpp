@@ -26,7 +26,7 @@ void Action_queue::check_back_read_tokens(int time)
             count++;
             continue;
         }
-        _tokens = Calculate::recalculate_tokens(_actions, _tokens, G, count);
+        Calculate::recalculate_tokens(_actions, _tokens, G, count);
         if (!all_of(_actions[count].begin(), _actions[count].end(), [](char c)
                     { return c == 'r'; }))
         {
@@ -60,7 +60,7 @@ int Action_queue::get_action_tokens(int time)
 int Action_queue::add_string_to_current_action(string action)
 {
     _actions[current_index]=action;
-    _tokens=Calculate::recalculate_tokens(_actions,_tokens,G,current_index);
+    Calculate::recalculate_tokens(_actions,_tokens,G,current_index);
     int token = _tokens[current_index];
     if(token>G)
     {
@@ -80,7 +80,7 @@ int Action_queue::add_pass_action(int num,int index)
     {
         auto it = _actions[current_index].begin()+index;
         _actions[current_index].insert(it, num, 'p');
-        _tokens = Calculate::recalculate_tokens(_actions, _tokens, G,current_index,index,num);
+        Calculate::recalculate_tokens(_actions, _tokens, G,current_index,index,num);
     }
     else
     {
@@ -108,14 +108,14 @@ int Action_queue::add_read_action(int num,int index)
     {
         auto it = _actions[current_index].begin()+index;
         _actions[current_index].insert(it, num, 'r');
-        _tokens = Calculate::recalculate_tokens(_actions, _tokens, G,current_index, index);
+        Calculate::recalculate_tokens(_actions, _tokens, G,current_index, index);
     }
     else
     {
         index = _actions[current_index].size();
         auto it = _actions[current_index].end();
         _actions[current_index].insert(it, num, 'r');
-        _tokens = Calculate::recalculate_tokens(_actions, _tokens, G,current_index, index,num);
+        Calculate::recalculate_tokens(_actions, _tokens, G,current_index, index,num);
     }
     int token = _tokens[current_index];
     if(_tokens[current_index]>G)
@@ -151,7 +151,7 @@ bool Action_queue::delete_action(int begin,int end)
     auto begin_it=_actions[current_index].begin()+begin;
     auto end_it=_actions[current_index].begin()+end;
     _actions[current_index].erase(begin_it,end_it);
-    _tokens=Calculate::recalculate_tokens(_actions,_tokens,G,current_index);
+    Calculate::recalculate_tokens(_actions,_tokens,G,current_index);
     return true;
 }
 
@@ -160,7 +160,7 @@ bool Action_queue::delete_last_action(){
         return false;
     }
     _actions[current_index].pop_back();
-    _tokens=Calculate::recalculate_tokens(_actions,_tokens,G,current_index);
+    Calculate::recalculate_tokens(_actions,_tokens,G,current_index);
     return true;
 }
 
