@@ -39,9 +39,9 @@ public:
         return _actions;
     }
 
-    void set_current_time(int current_time)
+    void set_current_time(int current_time,bool is_continue=false)
     {
-        for(int i=current_time;i<=current_index;i++)
+        for(int i=is_continue?current_time+1:current_time;i<=current_index;i++)
         {
             _actions[i]="";
             _tokens[i]=0;
