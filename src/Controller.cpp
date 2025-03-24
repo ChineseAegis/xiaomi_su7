@@ -95,7 +95,7 @@ void Controller::delete_action()
             printf("%d\n", id + 1);
         }
     }
-    object_read_failed_ids.clear();
+    //object_read_failed_ids.clear();
     if (abort_num > 0)
     {
         this->calculate_actions();
@@ -139,6 +139,7 @@ void Controller::read_action()
     int n_read;
     int request_id, object_id;
     scanf("%d", &n_read);
+    auto start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n_read; i++)
     {
         scanf("%d%d", &request_id, &object_id);
@@ -152,9 +153,15 @@ void Controller::read_action()
         this->calculate_actions();
     }
 
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::ofstream log("action_times.log", std::ios::app);
+    log << "[Time]  this->calculate_actions(): " << duration << " ms\n";
+    log.close();
+
     for (int i = 0; i < disk_actions.size(); i++)
     {
-        if (disk_actions[i].get_current_time() <= current_time && block_read_queue[i].size() > 0)
+        while (disk_actions[i].get_current_time() <= current_time && block_read_queue[i].size() > 0)
         {
             int head_index;
             if (disk_last_head_indexs[i] == -1)
@@ -165,11 +172,11 @@ void Controller::read_action()
             {
                 head_index = disk_last_head_indexs[i];
             }
-            block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v, (block_read_queue[i].size() < 7) ? block_read_queue[i].size() : 7);
+            //block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v);
             disk_last_head_indexs[i] = Calculate::calculate_actions(head_index, block_read_queue[i], this->disk_actions[i], current_time, num_v, G, true);
         }
     }
-
+   
     // 输出动作
     for (int i = 0; i < disk_actions.size(); i++)
     {
@@ -197,14 +204,15 @@ void Controller::read_action()
 
         printf("%s\n", s.c_str());
     }
-
+    
     printf("%d\n", this->request_success_num);
     for (auto &request_id : this->object_read_sucess_ids)
     {
         printf("%d\n", request_id + 1);
     }
     this->request_success_num = 0;
-    object_read_sucess_ids.clear();
+    std::vector<int> temp;
+    object_read_sucess_ids.swap(temp);
 
     fflush(stdout);
 }
@@ -217,14 +225,9 @@ void Controller::run()
 
     write_action();
 
-    auto start = std::chrono::high_resolution_clock::now();
-    read_action();
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    std::ofstream log("action_times.log", std::ios::app);
-    log << "[Time] read: " << duration << " ms\n";
-    log.close();
+    read_action();
+
     current_time++;
 }
 
@@ -325,16 +328,9 @@ bool Controller::delete_object_from_disk(int object_id)
 
 void Controller::deal_read_request(int object_id, int request_id)
 {
-    if (this->object_unread_ids.find(object_id) != object_unread_ids.end())
-    {
+
         object_unread_ids[object_id].push_back(request_id);
-    }
-    else
-    {
-        vector<int> request_ids;
-        request_ids.push_back(request_id);
-        object_unread_ids.insert(make_pair(object_id, request_ids));
-    }
+
     vector<int> temp;
     int n = objects.at(object_id).size;
     for (int i = 0; i < n; i++)
@@ -349,27 +345,28 @@ void Controller::calculate_actions_process_index(int start, int end)
 {
     for (int i = start; i < end; ++i)
     {
-        block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v, (block_read_queue[i].size() < 7) ? block_read_queue[i].size() : 7);
+        block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v);
         disk_last_head_indexs[i] = Calculate::calculate_actions(disks[i].head, block_read_queue[i], disk_actions[i], current_time, num_v, G);
     }
 }
 
 void Controller::calculate_actions()
 {
-    // auto start = std::chrono::high_resolution_clock::now();
-    block_read_queue = Calculate::calculate_blocks_queue(object_read_requests, objects, disks, current_time, num_v, G, num_T);
-    // auto end = std::chrono::high_resolution_clock::now();
-    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    auto start = std::chrono::high_resolution_clock::now();
+    Calculate::calculate_blocks_queue(object_read_requests, objects, disks, block_read_queue, current_time, num_v, G, num_T);
+    
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    // std::ofstream log("action_times.log", std::ios::app);
-    // log << "[Time] block_read_queue: " << duration << " ms\n";
-    // log.close();
+    std::ofstream log("action_times.log", std::ios::app);
+    log << "[Time] block_read_queue: " << duration << " ms\n";
+    log.close();
     for (int i = 0; i < block_read_queue.size(); i++)
     {
-        block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v, (block_read_queue[i].size() < 7) ? block_read_queue[i].size() : 7);
+        block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v);
         disk_last_head_indexs[i] = Calculate::calculate_actions(disks[i].head, block_read_queue[i], this->disk_actions[i], current_time, num_v, G);
     }
-
+    
     // int total = block_read_queue.size();
     // int thread_count = 4;
     // int batch_size = std::ceil(total / static_cast<float>(thread_count));
@@ -410,8 +407,8 @@ void Controller::execute_actions(int disk_id, const string &action)
                 //     throw runtime_error(action+"  "+to_string(disk_id)+":"+to_string(disks[disk_id].head));
                 // }
 
-                if (object_unread_ids.find(block->object_id) != object_unread_ids.end())
-                {
+                // if (object_unread_ids.find(block->object_id) != object_unread_ids.end())
+                // {
                     vector<int> &request_ids = object_unread_ids.at(block->object_id);
                     for (auto &request_id : request_ids)
                     {
@@ -438,7 +435,7 @@ void Controller::execute_actions(int disk_id, const string &action)
                                 return object_read_requests.find(id) == object_read_requests.end();
                             }),
                         request_ids.end());
-                }
+                // }
 
                 disks[disk_id].head = (disks[disk_id].head + 1) % num_v;
             }
