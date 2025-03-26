@@ -261,7 +261,7 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
     sort(disk_pair_ids.begin(), disk_pair_ids.end(), [](const pair<int, int> &p1, const pair<int, int> &p2)
          { return p1.second > p2.second; });
 
-    vector<vector<int>> indexs;
+    vector<vector<int>> indexs;//表示每个副本中每个块在磁盘上的具体存储位置（单元索引）
     indexs.resize(REP_NUM);
     for (int i = 0; i < indexs.size(); i++)
     {
