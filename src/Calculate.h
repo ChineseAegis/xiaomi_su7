@@ -15,8 +15,12 @@ using namespace std;
 #include <climits>
 #include <thread>
 #include <mutex>
+#include <list>
+#include <future>
+#include <utility>
 
 #define REP_NUM (3)
+struct ReadRequest;
 
 class Calculate
 {
@@ -35,9 +39,6 @@ class Calculate
     // 计算硬盘中两个索引之间的距离，num_v是该硬盘的索引总数
     static int distance_between_two_index(int begin_index, int end_index, int num_v);
 
-    
-
-
 public:
     // 更新对应时间片的token消耗
     // 输入的 actions 是时间片序列，每个时间片包含一个动作序列
@@ -45,13 +46,30 @@ public:
     // time 是指定时间片，若未指定，则更新所有时间片的 token
     // index如果指定，则代表all_actions[time][index]为新增动作，只需根据这个新增动作进行更新
     // 返回值：返回更新后的 tokens
-    static void recalculate_tokens(const vector<string> &all_actions, vector<int>& tokens, int G, int time = -1, int index = -1, int num = 1);
+    static void recalculate_tokens(const vector<string> &all_actions, vector<int> &tokens, int G, int time = -1, int index = -1, int num = 1);
 
     // 计算每个硬盘的block任务队列
-    static void calculate_blocks_queue(const unordered_map<int,pair<int,vector<int>>>& object_read_requests, const unordered_map<int, Object>& objects,vector<Disk> &disks,vector<deque<int>>& disk_unread_indexs, int time, int num_v, int G, int num_T);
+    static void calculate_blocks_queue(
+        const std::list<ReadRequest> &read_request_list,
+        const std::unordered_map<int, Object> &objects,
+        std::vector<Disk> &disks,
+        std::vector<std::deque<int>> &disk_unread_indexs,
+        int time,
+        int num_v,
+        int G,
+        int num_T);
+
+    static void append_blocks_for_new_requests(
+        const std::vector<int> &new_request_ids,
+        const std::unordered_map<int, std::list<ReadRequest>::iterator> &object_request_iters,
+        const std::unordered_map<int, Object> &objects,
+        std::vector<Disk> &disks,
+        std::vector<std::deque<int>> &disk_unread_indexs,
+        const unordered_map<int,vector<int>>& object_unread_ids,
+        int num_v);
 
     // 已知一个硬盘的磁头位置，将要读取的所有块的索引，修改传入的action_queue，增加动作到相应时间片中。num v是每个硬盘的存储单元数量
-    static int calculate_actions(int head_index, deque<int>& read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G,bool is_continue=false);
+    static int calculate_actions(int head_index, deque<int> &read_queue_indexs, Action_queue &action_queue, int current_time, int num_v, int G, bool is_continue = false);
 
-    static deque<int> sort_unread_indexs(int head, deque<int> read_queue_indexs, int num_v);
+    static deque<int> sort_unread_indexs(int head, const deque<int> &read_queue_indexs, int num_v, int n);
 };

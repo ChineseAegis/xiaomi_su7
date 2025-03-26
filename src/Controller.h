@@ -33,6 +33,13 @@ struct WriteResult
     }
 };
 
+struct ReadRequest {
+    int request_id;
+    int object_id;
+    std::vector<int> blocks; // 0 表示未读，1 表示已读
+};
+
+
 class Controller
 {
 
@@ -51,11 +58,17 @@ public:
 
     unordered_map<int,int> object_unread_requestid_block_count;// 记录对象有几个块已被读取，第一个int是request_id，第二个int是已被读取的块的数量，初始为0
 
-    unordered_map<int,pair<int,vector<int>>> object_read_requests;//还未完成的读取请求，第一个int是请求id，第二个元组的第一个元素是object id，第二个元素是object对应的block数组，0代表未被读取，1代表已被读取
+    //unordered_map<int,pair<int,vector<int>>> object_read_requests;//还未完成的读取请求，第一个int是请求id，第二个元组的第一个元素是object id，第二个元素是object对应的block数组，0代表未被读取，1代表已被读取
 
     vector<deque<int>> block_read_queue;//存储每个硬盘的block读取队列
 
+    vector<int> new_request_ids;//存储新来的读取请求，用于增量计算block读取队列
+
     vector<int> disk_last_head_indexs;
+
+    list<ReadRequest> read_request_list; // 替代 object_read_requests
+    unordered_map<int, std::list<ReadRequest>::iterator> object_request_iters; // request_id 到链表位置的映射
+
     
 
     int request_success_num=0;//读取成功但还没有上报的请求的个数
@@ -87,7 +100,7 @@ public:
 
     void calculate_actions_process_index(int start,int end);
 
-    void calculate_actions();
+    void calculate_actions(bool force_full = false);
 
     void execute_actions(int disk_id,const string& action);
 
