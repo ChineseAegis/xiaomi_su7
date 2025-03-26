@@ -39,11 +39,21 @@ struct ReadRequest {
     std::vector<int> blocks; // 0 表示未读，1 表示已读
 };
 
+struct Partition{
+    int tag;
+    bool is_large_object;//需要设置阈值
+    vector<Disk*> disks;
+};
 
 class Controller
 {
+private:
+    vector<Partition> partitions;  // 分区列表
+    const int SIZE_THRESHOLD = 1024; // 大对象阈值(示例1MB)
+    Partition& get_partition(int tag, int size); 
 
 public:
+    
     int num_T;            // 时间片数量
     int num_disk;         // 磁盘数量 3<=N<=10
     int num_tag;          // 标签数量

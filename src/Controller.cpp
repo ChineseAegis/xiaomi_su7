@@ -277,8 +277,26 @@ Block *Controller::write_block_to_disk(int disk_id, int index, int object_id, in
     disks[disk_id].num_free_unit--;
     return disks[disk_id].units[index];
 }
+
+// Controller.cpp 实现文件
+Partition& Controller::get_partition(int tag, int size) {
+    const int SIZE_THRESHOLD = 1024; // 或从配置读取
+    bool is_large = size > SIZE_THRESHOLD;
+    
+    // 遍历现有分区查找匹配
+    for (auto& p : partitions) {
+        if (p.tag == tag && p.is_large_object == is_large) 
+            return p;
+    }
+    
+    // 未找到则创建新分区（需补充创建逻辑）
+    throw runtime_error("Partition not found"); 
+    // 实际项目可在此处调用 create_partition(tag, is_large);
+}
+
 WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, vector<vector<Block *>> &p_blocks)
 {
+    Partition &partition = get_partition(tag, size);
     p_blocks.resize(REP_NUM);
     for (int i = 0; i < REP_NUM; i++)
     {
@@ -290,41 +308,83 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
         disk_pair_ids.push_back(make_pair(disks[i].id, disks[i].num_free_unit));
     }
 
+    //按空闲数量选择磁盘，负载均衡
     sort(disk_pair_ids.begin(), disk_pair_ids.end(), [](const pair<int, int> &p1, const pair<int, int> &p2)
          { return p1.second > p2.second; });
 
-    vector<vector<int>> indexs;
+    vector<vector<int>> indexs;//表示每个副本中每个块在磁盘上的具体存储位置（单元索引）
     indexs.resize(REP_NUM);
     for (int i = 0; i < indexs.size(); i++)
     {
         indexs[i].resize(size);
     }
 
-    for (int i = 0; i < REP_NUM; i++)
-    {
+    for (int i = 0; i < REP_NUM;i++){
         int disk_id = disk_pair_ids[i].first;
-        int count = size;
-        for (int j = tag*((num_v)/num_tag); ; j=(j+1)%(num_v-1))
-        {
-            if (!count)
-            {
+        bool allocated = false;
+    //判断是否具有连续的存储空间
+        for (int j = 0; j <=disks[disk_id].units.size()-size;j++){
+            bool is_continuous = true;
+            for (int k = 0; k < size;k++){
+                if(disks[disk_id].units[j+k]!=nullptr){
+                    is_continuous = false;
+                    break;
+                }
+            }
+
+            if(is_continuous){
+                for (int k = 0; k < size;k++){
+                    indexs[i][k] = j + k;
+                    p_blocks[i][k] = write_block_to_disk(disk_id, j + k, object_id, k);
+                }
+                allocated = true;
                 break;
             }
-            // throw std::runtime_error(to_string(disk_id));
-            if (disks[disk_id].units[j] == nullptr)
+        }
+
+        if(!allocated){
+            int count = size;
+            for (int j = tag*((num_v)/num_tag); ; j=(j+1)%(num_v-1))
             {
-                indexs[i][size - count] = j;
-                p_blocks[i][size - count] = write_block_to_disk(disk_id, j, object_id, size - count);
-                count--;
-            }
-            if((j+1)%(num_v-1)==tag*(num_v/num_tag))
+                if (!count)
+                {
+                    break;
+                }
+                // throw std::runtime_error(to_string(disk_id));
+                if (disks[disk_id].units[j] == nullptr)
+                {
+                    indexs[i][size - count] = j;
+                    p_blocks[i][size - count] = write_block_to_disk(disk_id, j, object_id, size - count);
+                    count--;
+                }
+                if((j+1)%(num_v-1)==tag*(num_v/num_tag))
             {
                 break;
             }
         }
+        }
     }
+        // for (int i = 0; i < REP_NUM; i++)
+        // {
+        //     int disk_id = disk_pair_ids[i].first;
+        //     int count = size;
+        //     for (int j = 0; j < num_v; j++)
+        //     {
+        //         if (!count)
+        //         {
+        //             break;
+        //         }
+        //         // throw std::runtime_error(to_string(disk_id));
+        //         if (disks[disk_id].units[j] == nullptr)
+        //         {
+        //             indexs[i][size - count] = j;
+        //             p_blocks[i][size - count] = write_block_to_disk(disk_id, j, object_id, size - count);
+        //             count--;
+        //         }
+        //     }
+        // }
 
-    vector<int> disk_ids;
+        vector<int> disk_ids;
 
     for (auto &d : disk_pair_ids)
     {
