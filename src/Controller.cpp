@@ -120,9 +120,9 @@ void Controller::write_action()
 
         vector<vector<Block *>> p_blocks;
 
-        WriteResult result = write_object_to_disk(id - 1, size, tag, p_blocks);
+        WriteResult result = write_object_to_disk(id - 1, size, tag-1, p_blocks);
 
-        objects.insert(make_pair(id - 1, Object(id - 1, size, tag, p_blocks)));
+        objects.insert(make_pair(id - 1, Object(id - 1, size, tag-1, p_blocks)));
         printf("%d\n", id);
         for (int j = 0; j < REP_NUM; j++)
         {
@@ -175,6 +175,8 @@ void Controller::read_action()
         }
     }
     frequence--;
+
+    
     for (int i = 0; i < disk_actions.size(); i++)
     {
         while (disk_actions[i].get_current_time() <= current_time && block_read_queue[i].size() > 0)
@@ -199,6 +201,7 @@ void Controller::read_action()
 
     // 输出动作
     // 提前分配空间，避免频繁的内存分配
+
     string s;
     s.reserve(500); // 根据实际需求调整预留空间
 
@@ -248,6 +251,7 @@ void Controller::run()
 
     delete_action();
 
+    
     write_action();
     // auto start = std::chrono::high_resolution_clock::now();
     read_action();
@@ -300,7 +304,7 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
     {
         int disk_id = disk_pair_ids[i].first;
         int count = size;
-        for (int j = 0; j < num_v; j++)
+        for (int j = tag*((num_v)/num_tag); ; j=(j+1)%(num_v-1))
         {
             if (!count)
             {
@@ -312,6 +316,10 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
                 indexs[i][size - count] = j;
                 p_blocks[i][size - count] = write_block_to_disk(disk_id, j, object_id, size - count);
                 count--;
+            }
+            if((j+1)%(num_v-1)==tag*(num_v/num_tag))
+            {
+                break;
             }
         }
     }
