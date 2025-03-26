@@ -120,9 +120,9 @@ void Controller::write_action()
 
         vector<vector<Block *>> p_blocks;
 
-        WriteResult result = write_object_to_disk(id - 1, size, tag-1, p_blocks);
+        WriteResult result = write_object_to_disk(id - 1, size, tag - 1, p_blocks);
 
-        objects.insert(make_pair(id - 1, Object(id - 1, size, tag-1, p_blocks)));
+        objects.insert(make_pair(id - 1, Object(id - 1, size, tag - 1, p_blocks)));
         printf("%d\n", id);
         for (int j = 0; j < REP_NUM; j++)
         {
@@ -154,29 +154,29 @@ void Controller::read_action()
 
     // 统计 calculate_actions 的耗时（毫秒）
 
-
-    if (n_read > 0&&frequence<=0)
+    if (n_read > 0 && frequence <= 0)
     {
-        
-        frequence=read_frequence;
+
+        frequence = read_frequence;
         this->calculate_actions();
     }
 
-    if (n_read >30)
+    if (n_read > 30)
     {
-    if(read_frequence<=50)
+        if (read_frequence <= 30)
         {
             read_frequence++;
         }
-    }else{
-        if(read_frequence>0)
+    }
+    else
+    {
+        if (read_frequence > 0)
         {
             read_frequence--;
         }
     }
     frequence--;
 
-    
     for (int i = 0; i < disk_actions.size(); i++)
     {
         while (disk_actions[i].get_current_time() <= current_time && block_read_queue[i].size() > 0)
@@ -251,7 +251,6 @@ void Controller::run()
 
     delete_action();
 
-    
     write_action();
     // auto start = std::chrono::high_resolution_clock::now();
     read_action();
@@ -279,24 +278,26 @@ Block *Controller::write_block_to_disk(int disk_id, int index, int object_id, in
 }
 
 // Controller.cpp 实现文件
-Partition& Controller::get_partition(int tag, int size) {
+Partition &Controller::get_partition(int tag, int size)
+{
     const int SIZE_THRESHOLD = 1024; // 或从配置读取
     bool is_large = size > SIZE_THRESHOLD;
-    
+
     // 遍历现有分区查找匹配
-    for (auto& p : partitions) {
-        if (p.tag == tag && p.is_large_object == is_large) 
+    for (auto &p : partitions)
+    {
+        if (p.tag == tag && p.is_large_object == is_large)
             return p;
     }
-    
+
     // 未找到则创建新分区（需补充创建逻辑）
-    throw runtime_error("Partition not found"); 
+    throw runtime_error("Partition not found");
     // 实际项目可在此处调用 create_partition(tag, is_large);
 }
 
 WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, vector<vector<Block *>> &p_blocks)
 {
-    Partition &partition = get_partition(tag, size);
+    //Partition &partition = get_partition(tag, size);
     p_blocks.resize(REP_NUM);
     for (int i = 0; i < REP_NUM; i++)
     {
@@ -308,43 +309,58 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
         disk_pair_ids.push_back(make_pair(disks[i].id, disks[i].num_free_unit));
     }
 
-    //按空闲数量选择磁盘，负载均衡
+    // 按空闲数量选择磁盘，负载均衡
     sort(disk_pair_ids.begin(), disk_pair_ids.end(), [](const pair<int, int> &p1, const pair<int, int> &p2)
          { return p1.second > p2.second; });
 
-    vector<vector<int>> indexs;//表示每个副本中每个块在磁盘上的具体存储位置（单元索引）
+    vector<vector<int>> indexs; // 表示每个副本中每个块在磁盘上的具体存储位置（单元索引）
     indexs.resize(REP_NUM);
     for (int i = 0; i < indexs.size(); i++)
     {
         indexs[i].resize(size);
     }
 
-    for (int i = 0; i < REP_NUM;i++){
+    for (int i = 0; i < REP_NUM; i++)
+    {
         int disk_id = disk_pair_ids[i].first;
-        bool allocated = false;
-    //判断是否具有连续的存储空间
-        for (int j = 0; j <=disks[disk_id].units.size()-size;j++){
-            bool is_continuous = true;
-            for (int k = 0; k < size;k++){
-                if(disks[disk_id].units[j+k]!=nullptr){
-                    is_continuous = false;
-                    break;
-                }
-            }
+        // bool allocated = false;
+        // // 判断是否具有连续的存储空间
+        // for (int j = tag * ((num_v) / num_tag);; j = (j + 1) % (num_v - 1))
+        // {
+        //     bool is_continuous = true;
+        //     for (int k = 0; k < size; k++)
+        //     {
+        //         if (disks[disk_id].units[(j + k) % (num_v - 1)] != nullptr)
+        //         {
+        //             is_continuous = false;
+        //             break;
+        //         }
+        //     }
 
-            if(is_continuous){
-                for (int k = 0; k < size;k++){
-                    indexs[i][k] = j + k;
-                    p_blocks[i][k] = write_block_to_disk(disk_id, j + k, object_id, k);
-                }
-                allocated = true;
-                break;
-            }
-        }
+        //     if (is_continuous)
+        //     {
+        //         for (int k = tag * ((num_v) / num_tag);; k = (k + 1) % (num_v - 1))
+        //         {
+        //             indexs[i][k] = j + k;
+        //             p_blocks[i][k] = write_block_to_disk(disk_id, j + k, object_id, k);
+        //             if ((k + 1) % (num_v - 1) == tag * (num_v / num_tag))
+        //             {
+        //                 break;
+        //             }
+        //         }
+        //         allocated = true;
+        //         break;
+        //     }
+        //     if ((j + 1) % (num_v - 1) == tag * (num_v / num_tag))
+        //     {
+        //         break;
+        //     }
+        // }
 
-        if(!allocated){
+        // if (!allocated)
+        // {
             int count = size;
-            for (int j = tag*((num_v)/num_tag); ; j=(j+1)%(num_v-1))
+            for (int j = tag * ((num_v) / num_tag);; j = (j + 1) % (num_v - 1))
             {
                 if (!count)
                 {
@@ -357,34 +373,34 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
                     p_blocks[i][size - count] = write_block_to_disk(disk_id, j, object_id, size - count);
                     count--;
                 }
-                if((j+1)%(num_v-1)==tag*(num_v/num_tag))
-            {
-                break;
+                if ((j + 1) % (num_v - 1) == tag * (num_v / num_tag))
+                {
+                    break;
+                }
             }
-        }
-        }
-    }
-        // for (int i = 0; i < REP_NUM; i++)
-        // {
-        //     int disk_id = disk_pair_ids[i].first;
-        //     int count = size;
-        //     for (int j = 0; j < num_v; j++)
-        //     {
-        //         if (!count)
-        //         {
-        //             break;
-        //         }
-        //         // throw std::runtime_error(to_string(disk_id));
-        //         if (disks[disk_id].units[j] == nullptr)
-        //         {
-        //             indexs[i][size - count] = j;
-        //             p_blocks[i][size - count] = write_block_to_disk(disk_id, j, object_id, size - count);
-        //             count--;
-        //         }
-        //     }
         // }
+    }
+    // for (int i = 0; i < REP_NUM; i++)
+    // {
+    //     int disk_id = disk_pair_ids[i].first;
+    //     int count = size;
+    //     for (int j = 0; j < num_v; j++)
+    //     {
+    //         if (!count)
+    //         {
+    //             break;
+    //         }
+    //         // throw std::runtime_error(to_string(disk_id));
+    //         if (disks[disk_id].units[j] == nullptr)
+    //         {
+    //             indexs[i][size - count] = j;
+    //             p_blocks[i][size - count] = write_block_to_disk(disk_id, j, object_id, size - count);
+    //             count--;
+    //         }
+    //     }
+    // }
 
-        vector<int> disk_ids;
+    vector<int> disk_ids;
 
     for (auto &d : disk_pair_ids)
     {
@@ -496,7 +512,8 @@ void Controller::calculate_actions(bool force_full)
 
     for (int t = 0; t < thread_count; ++t)
     {
-        threads[t] = std::thread([this, t, per_thread, total_disks]() {
+        threads[t] = std::thread([this, t, per_thread, total_disks]()
+                                 {
             int start_idx = t * per_thread;
             int end_idx = std::min(start_idx + per_thread, total_disks);
             for (int i = start_idx; i < end_idx; ++i)
@@ -504,16 +521,15 @@ void Controller::calculate_actions(bool force_full)
                 block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v, 5);
                 disk_last_head_indexs[i] = Calculate::calculate_actions(
                     disks[i].head, block_read_queue[i], disk_actions[i], current_time, num_v, G);
-            }
-        });
+            } });
     }
 
     // 等待所有线程结束
-    for (auto& th : threads)
+    for (auto &th : threads)
     {
-        if (th.joinable()) th.join();
+        if (th.joinable())
+            th.join();
     }
-
 }
 
 void Controller::execute_actions(int disk_id, const string &action)
