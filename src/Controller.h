@@ -52,6 +52,9 @@ public:
     int current_time = 0; // 当前时间片
     vector<Disk> disks;   // 存储硬盘的数组
 
+    int frequence=0;
+    int read_frequence=0;
+
     unordered_map<int, Object> objects; // 存储记录所有对象
 
     unordered_map<int,vector<int>> object_unread_ids; // 存储已经请求读取，但还没有读取的对象,第一个int是对象id，第二个数组是存放请求id的数组
@@ -69,6 +72,7 @@ public:
     list<ReadRequest> read_request_list; // 替代 object_read_requests
     unordered_map<int, std::list<ReadRequest>::iterator> object_request_iters; // request_id 到链表位置的映射
 
+    std::unordered_map<std::string, long long> function_times;
     
 
     int request_success_num=0;//读取成功但还没有上报的请求的个数
