@@ -1,5 +1,4 @@
 #include "Calculate.h"
-#include <chrono>
 #include <fstream>
 
 int Calculate::calculate_num_pre_read_action(const vector<string> &actions, int time, int index)
@@ -128,27 +127,148 @@ void Calculate::calculate_blocks_queue(
     int G,
     int num_T)
 {
-    std::vector<std::deque<int>> temp(disks.size());
-    disk_unread_indexs.swap(temp);
+    disk_unread_indexs.assign(disks.size(), {});
+    disk_unread_indexs.reserve(num_v);
+    std::mutex mtx;
 
+    const int num_threads = 8;
+    std::vector<const ReadRequest *> request_ptrs;
+    request_ptrs.reserve(read_request_list.size());
+
+    // 避免拷贝，存储指针
+    for (const auto &req : read_request_list)
+        request_ptrs.push_back(&req);
+
+    size_t total = request_ptrs.size();
+    size_t chunk_size = (total + num_threads - 1) / num_threads;
+
+    std::vector<std::thread> threads;
+
+    for (int t = 0; t < num_threads; ++t)
+    {
+        threads.emplace_back([&, t]()
+                             {
+            size_t start = t * chunk_size;
+            size_t end = std::min(start + chunk_size, total);
+
+            // 使用 vector<deque>，后续可以 move 或 splice 到主线程
+            std::vector<std::deque<int>> local_disk_queues(disks.size());
+
+            for (size_t i = start; i < end; ++i)
+            {
+                const ReadRequest &req = *request_ptrs[i];
+                int object_id = req.object_id;
+                const Object &object = objects.at(object_id);
+                int block_num = object.size;
+
+                std::vector<int> record(block_num, INT_MAX);
+                std::vector<std::pair<int, int>> disk_ids(block_num);
+
+                for (int j = 0; j < REP_NUM; ++j)
+                {
+                    for (auto *block : object.blocks[j])
+                    {
+                        int block_id = block->id;
+                        if (req.blocks[block_id] == 1)
+                            continue;
+
+                        int cost = distance_between_two_index(disks[block->disk_id].head, block->index, num_v);
+                        if (cost < record[block_id])
+                        {
+                            record[block_id] = cost;
+                            disk_ids[block_id] = {block->disk_id, block->index};
+                        }
+                    }
+                }
+
+                for (int j = 0; j < block_num; ++j)
+                {
+                    int disk_id = disk_ids[j].first;
+                    int index = disk_ids[j].second;
+                    local_disk_queues[disk_id].push_back(index);
+                }
+            }
+
+            // 合并线程数据，避免 copy，用 splice 或 move
+            std::lock_guard<std::mutex> lock(mtx);
+            for (size_t d = 0; d < disks.size(); ++d)
+            {
+                disk_unread_indexs[d].insert(
+                    disk_unread_indexs[d].end(),
+                    std::make_move_iterator(local_disk_queues[d].begin()),
+                    std::make_move_iterator(local_disk_queues[d].end())
+                );
+            } });
+    }
+
+    for (auto &th : threads)
+        th.join();
+}
+
+void Calculate::append_blocks_for_new_requests(
+    const std::vector<int> &new_request_ids,
+    const std::unordered_map<int, std::list<ReadRequest>::iterator> &object_request_iters,
+    const std::unordered_map<int, Object> &objects,
+    std::vector<Disk> &disks,
+    std::vector<std::deque<int>> &disk_unread_indexs,
+    const unordered_map<int, vector<int>> &object_unread_ids,
+    int num_v)
+{
+    std::unordered_set<std::pair<int, int>, pair_hash> added_blocks;
     std::unordered_set<std::pair<int, int>, pair_hash> blocks;
 
-    for (const auto &req : read_request_list)
+    for (int i = 0; i < disks.size(); i++)
     {
-        int object_id = req.object_id;
-        const Object &object = objects.at(object_id);
+        for (auto &index : disk_unread_indexs[i])
+        {
+            int object_id = disks[i].units[index]->object_id;
+            int block_id = disks[i].units[index]->id;
+            added_blocks.insert({object_id, block_id});
+        }
+    }
+    // for(int i=0;i<disks.size();i++)
+    // {
+    //     for(auto& index:disk_unread_indexs[i])
+    //     {
+    //         blocks.insert({i,index});
+    //     }
+    // }
+
+    for (int request_id : new_request_ids)
+    {
+        auto it = object_request_iters.find(request_id);
+        if (it == object_request_iters.end())
+            continue;
+
+        const ReadRequest &req = *(it->second);
+        const Object &object = objects.at(req.object_id);
+
+        const vector<int> &request_ids = object_unread_ids.at(object.id);
+
         int block_num = object.size;
 
         std::vector<int> record(block_num, INT_MAX);
-        std::vector<std::pair<int, int>> disk_ids(block_num); // <disk_id, index>
+        std::vector<std::pair<int, int>> disk_ids(block_num);
 
         for (int i = 0; i < REP_NUM; ++i)
         {
             for (auto *block : object.blocks[i])
             {
+                // bool skip = false;
+                // for (auto &r_id : request_ids)
+                // {
+                //     if (r_id != request_id &&
+                //         object_request_iters.at(r_id)->blocks[block->id] == 0)
+                //     {
+                //         skip = true;
+                //         break;
+                //     }
+                // }
+                // if (skip)
+                //     continue;
+
                 int block_id = block->id;
-                if (req.blocks[block_id] == 1)
-                    continue;
+                // if (req.blocks[block_id] == 1) continue;
 
                 int cost = distance_between_two_index(disks[block->disk_id].head, block->index, num_v);
                 if (cost < record[block_id])
@@ -163,62 +283,10 @@ void Calculate::calculate_blocks_queue(
         {
             int disk_id = disk_ids[j].first;
             int index = disk_ids[j].second;
-
-            if (blocks.insert({disk_id, index}).second)
+            int object_id = disks[disk_id].units[index]->object_id;
+            int block_id = disks[disk_id].units[index]->id;
+            if (added_blocks.insert({object_id, block_id}).second)
             {
-                disk_unread_indexs[disk_id].push_back(index);
-            }
-        }
-    }
-}
-
-void Calculate::append_blocks_for_new_requests(
-    const std::vector<int> &new_request_ids,
-    const std::unordered_map<int, std::list<ReadRequest>::iterator> &object_request_iters,
-    const std::unordered_map<int, Object> &objects,
-    std::vector<Disk> &disks,
-    std::vector<std::deque<int>> &disk_unread_indexs,
-    const unordered_map<int, vector<int>> &object_unread_ids,
-    int num_v)
-{
-    std::unordered_set<std::pair<int, int>, pair_hash> added_blocks;
-
-    // 填充已存在的 (disk_id, index)
-    for (int disk_id = 0; disk_id < disks.size(); ++disk_id) {
-        for (int index : disk_unread_indexs[disk_id]) {
-            added_blocks.insert({disk_id, index});
-        }
-    }
-
-    for (int request_id : new_request_ids) {
-        auto it = object_request_iters.find(request_id);
-        if (it == object_request_iters.end()) continue;
-
-        const ReadRequest &req = *(it->second);
-        const Object &object = objects.at(req.object_id);
-
-        int block_num = object.size;
-        std::vector<int> record(block_num, INT_MAX);
-        std::vector<std::pair<int, int>> disk_ids(block_num);
-
-        for (int i = 0; i < REP_NUM; ++i) {
-            for (auto *block : object.blocks[i]) {
-                int block_id = block->id;
-                if (req.blocks[block_id] == 1) continue;
-
-                int cost = distance_between_two_index(disks[block->disk_id].head, block->index, num_v);
-                if (cost < record[block_id]) {
-                    record[block_id] = cost;
-                    disk_ids[block_id] = {block->disk_id, block->index};
-                }
-            }
-        }
-
-        for (int j = 0; j < block_num; ++j) {
-            int disk_id = disk_ids[j].first;
-            int index = disk_ids[j].second;
-            if (added_blocks.find({disk_id, index}) == added_blocks.end()) {
-                added_blocks.insert({disk_id, index});
                 disk_unread_indexs[disk_id].push_back(index);
             }
         }
@@ -229,7 +297,7 @@ int Calculate::calculate_actions(int head_index, deque<int> &read_queue_indexs, 
 {
 
     // read_queue_indexs = sort_unread_indexs(head_index, read_queue_indexs, num_v);
-    int n = (read_queue_indexs.size() < 5) ? read_queue_indexs.size() : 5;
+    int n = (read_queue_indexs.size() < 1) ? read_queue_indexs.size() : 1;
     action_queue.set_current_time(current_time, is_continue);
     for (size_t i = 0; i < n; i++)
     {
@@ -267,6 +335,7 @@ int Calculate::calculate_actions(int head_index, deque<int> &read_queue_indexs, 
         }
         else
         {
+            
             int result = action_queue.add_pass_action(distance);
         }
         int decision = action_queue.add_read_action(1); // 用于判断是否读取超过大小
@@ -285,7 +354,7 @@ int Calculate::calculate_actions(int head_index, deque<int> &read_queue_indexs, 
     return head_index;
 }
 
-int Calculate::cost_between_two_index(int head_index, int target_index, deque<int> read_queue_indexs, int current_time, int num_v, int G, int max_T)
+inline int Calculate::cost_between_two_index(int head_index, int target_index, deque<int> read_queue_indexs, int current_time, int num_v, int G, int max_T)
 {
     read_queue_indexs.push_back(target_index);
     Action_queue actions(max_T, G);
@@ -299,6 +368,7 @@ int Calculate::distance_between_two_index(int begin_index, int end_index, int nu
     if (begin_index < 0 || begin_index >= num_v ||
         end_index < 0 || end_index >= num_v || num_v <= 0)
     {
+        throw runtime_error(to_string(begin_index)+" "+to_string(end_index)+" "+to_string(num_v));
         return -1;
     }
 
@@ -308,25 +378,33 @@ int Calculate::distance_between_two_index(int begin_index, int end_index, int nu
 
 deque<int> Calculate::sort_unread_indexs(int head, const deque<int> &indexes, int num_v, int n)
 {
-    vector<pair<int, int>> indexed_dist;
-    indexed_dist.reserve(indexes.size());
+    const int MAX_DIST = num_v;
+    vector<vector<int>> buckets(MAX_DIST + 1);
+    vector<bool> seen(num_v, false);
 
+    // int unique_size = 0;
     for (int idx : indexes)
-        indexed_dist.emplace_back(idx, distance_between_two_index(head, idx, num_v));
+    {
+        if (!seen[idx])
+        {
+            seen[idx] = true;
+            //++unique_size;
 
-    std::partial_sort(indexed_dist.begin(), indexed_dist.begin() + std::min(n, (int)indexed_dist.size()), indexed_dist.end(),
-                      [](const auto &a, const auto &b)
-                      {
-                          return a.second < b.second;
-                      });
+            int dist = distance_between_two_index(head, idx, num_v);
+            buckets[dist].push_back(idx);
+        }
+    }
+
+    // n = std::min(n, unique_size);
 
     deque<int> sorted;
-    for (int i = 0; i < n && i < indexed_dist.size(); ++i)
-        sorted.push_back(indexed_dist[i].first);
-
-    // 保留剩下的元素
-    for (int i = n; i < indexed_dist.size(); ++i)
-        sorted.push_back(indexed_dist[i].first);
+    for (int d = 0; d <= MAX_DIST; ++d)
+    {
+        for (int idx : buckets[d])
+        {
+            sorted.push_back(idx);
+        }
+    }
 
     return sorted;
 }
