@@ -145,7 +145,7 @@ void Controller::read_action()
     int n_read;
     int request_id, object_id;
     scanf("%d", &n_read);
-    auto start = std::chrono::high_resolution_clock::now();
+
     for (int i = 0; i < n_read; i++)
     {
         scanf("%d%d", &request_id, &object_id);
@@ -154,18 +154,27 @@ void Controller::read_action()
 
     // 统计 calculate_actions 的耗时（毫秒）
 
-    if (n_read > 0)
+
+    if (n_read > 0&&frequence<=0)
     {
+        
+        frequence=read_frequence;
         this->calculate_actions();
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    std::ofstream log("action_times.log", std::ios::app);
-    log << "[Time]  this->calculate_actions(): " << duration << " ms\n";
-    log.close();
-
-  
+    if (n_read >30)
+    {
+    if(read_frequence<=50)
+        {
+            read_frequence++;
+        }
+    }else{
+        if(read_frequence>0)
+        {
+            read_frequence--;
+        }
+    }
+    frequence--;
     for (int i = 0; i < disk_actions.size(); i++)
     {
         while (disk_actions[i].get_current_time() <= current_time && block_read_queue[i].size() > 0)
@@ -179,12 +188,20 @@ void Controller::read_action()
             {
                 head_index = disk_last_head_indexs[i];
             }
-            block_read_queue[i] = Calculate::sort_unread_indexs(head_index, block_read_queue[i], num_v, 5);
+            // block_read_queue[i] = Calculate::sort_unread_indexs(head_index, block_read_queue[i], num_v, 5);
             disk_last_head_indexs[i] = Calculate::calculate_actions(head_index, block_read_queue[i], this->disk_actions[i], current_time, num_v, G, true);
+            if (disk_last_head_indexs[i] == head_index)
+            {
+                break;
+            }
         }
     }
 
     // 输出动作
+    // 提前分配空间，避免频繁的内存分配
+    string s;
+    s.reserve(500); // 根据实际需求调整预留空间
+
     for (int i = 0; i < disk_actions.size(); i++)
     {
         const vector<string> &actions = disk_actions[i].get_actions();
@@ -192,24 +209,25 @@ void Controller::read_action()
 
         this->execute_actions(i, orig_s); // 如果 execute_actions 不会修改 orig_s，可以直接传引用
 
-        string s; // 只在需要时才创建副本
         if (orig_s.empty())
         {
-            s = "#";
+            // 空字符串直接输出
+            printf("#\n");
         }
         else if (orig_s[0] == 'j')
         {
+            // 只需要计算一次 target_index
             int len = orig_s.size() - 2;
             string sub_str = orig_s.substr(2, len);
             int target_index = stoi(sub_str) + 1;
-            s = "j " + to_string(target_index);
+            printf("j %d\n", target_index);
         }
         else
         {
+            // 对于非空的 orig_s，只在需要时拼接#
             s = orig_s + "#";
+            printf("%s\n", s.c_str());
         }
-
-        printf("%s\n", s.c_str());
     }
 
     printf("%d\n", this->request_success_num);
@@ -231,9 +249,13 @@ void Controller::run()
     delete_action();
 
     write_action();
-
+    // auto start = std::chrono::high_resolution_clock::now();
     read_action();
-
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    // std::ofstream log("action_times.log", std::ios::app);
+    // log << "[Time] read: " << duration << " ms\n";
+    // log.close();
     current_time++;
 }
 
@@ -350,7 +372,6 @@ void Controller::deal_read_request(int object_id, int request_id)
     new_request_ids.push_back(request_id);
 }
 
-
 // void Controller::calculate_actions_process_index(int start, int end)
 // {
 //     for (int i = start; i < end; ++i)
@@ -362,50 +383,70 @@ void Controller::deal_read_request(int object_id, int request_id)
 
 void Controller::calculate_actions(bool force_full)
 {
-    auto start = std::chrono::high_resolution_clock::now();
+    // auto start = std::chrono::high_resolution_clock::now();
 
-    if (force_full)
+    // if (force_full)
+    // {
+    // 全量重建 block_read_queue（恢复旧逻辑）
+    Calculate::calculate_blocks_queue(
+        this->read_request_list,
+        this->objects,
+        this->disks,
+        this->block_read_queue,
+        current_time,
+        num_v,
+        G,
+        num_T);
+    // }
+    // else if (!new_request_ids.empty())
+    // {
+
+    //     // 增量更新
+    //     Calculate::append_blocks_for_new_requests(
+    //         this->new_request_ids,
+    //         this->object_request_iters,
+    //         this->objects,
+    //         this->disks,
+    //         this->block_read_queue,
+    //         this->object_unread_ids,
+    //         this->num_v);
+    //     new_request_ids.clear();
+
+    // }
+
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    // std::ofstream log("action_times.log", std::ios::app);
+    // log << "[Time] calculate_actions(" << (force_full ? "full" : "incremental") << "): " << duration << " ms\n";
+    // log.close();
+
+    const int thread_count = 8;
+    std::vector<std::thread> threads(thread_count);
+
+    int total_disks = static_cast<int>(block_read_queue.size());
+    int per_thread = (total_disks + thread_count - 1) / thread_count;
+
+    for (int t = 0; t < thread_count; ++t)
     {
-        // 全量重建 block_read_queue（恢复旧逻辑）
-        Calculate::calculate_blocks_queue(
-            this->read_request_list,
-            this->objects,
-            this->disks,
-            this->block_read_queue,
-            current_time,
-            num_v,
-            G,
-            num_T);
-    }
-    else if (!new_request_ids.empty())
-    {
-        // 增量更新
-        Calculate::append_blocks_for_new_requests(
-            this->new_request_ids,
-            this->object_request_iters,
-            this->objects,
-            this->disks,
-            this->block_read_queue,
-            this->object_unread_ids,
-            this->num_v);
-        new_request_ids.clear();
+        threads[t] = std::thread([this, t, per_thread, total_disks]() {
+            int start_idx = t * per_thread;
+            int end_idx = std::min(start_idx + per_thread, total_disks);
+            for (int i = start_idx; i < end_idx; ++i)
+            {
+                block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v, 5);
+                disk_last_head_indexs[i] = Calculate::calculate_actions(
+                    disks[i].head, block_read_queue[i], disk_actions[i], current_time, num_v, G);
+            }
+        });
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    std::ofstream log("action_times.log", std::ios::app);
-    log << "[Time] calculate_actions(" << (force_full ? "full" : "incremental") << "): " << duration << " ms\n";
-    log.close();
-
-    // 排序和动作更新
-    for (int i = 0; i < block_read_queue.size(); i++)
+    // 等待所有线程结束
+    for (auto& th : threads)
     {
-        block_read_queue[i] = Calculate::sort_unread_indexs(disks[i].head, block_read_queue[i], num_v, 5);
-        disk_last_head_indexs[i] = Calculate::calculate_actions(
-            disks[i].head, block_read_queue[i], disk_actions[i], current_time, num_v, G);
+        if (th.joinable()) th.join();
     }
+
 }
-
 
 void Controller::execute_actions(int disk_id, const string &action)
 {
@@ -424,53 +465,53 @@ void Controller::execute_actions(int disk_id, const string &action)
             else if (c == 'r')
             {
                 Block *block = disks[disk_id].units[disks[disk_id].head];
-                if(block!=nullptr)
+                if (block != nullptr)
                 {
-                // if(current_time==34696&&block==nullptr)
-                // {
-                //     throw runtime_error("test");
-                // }
-                int object_id = block->object_id;
-                int block_id = block->id;
+                    // if(current_time==34696&&block==nullptr)
+                    // {
+                    //     throw runtime_error("test");
+                    // }
+                    int object_id = block->object_id;
+                    int block_id = block->id;
 
-                if(object_unread_ids.find(object_id)!=object_unread_ids.end())
-                {
-                vector<int> &request_ids = object_unread_ids.at(object_id);
-                for (auto &request_id : request_ids)
-                {
-                    auto it = object_request_iters.find(request_id);
-                    if (it == object_request_iters.end())
-                        continue;
-
-                    ReadRequest &req = *(it->second);
-                    if (req.blocks[block_id] == 0)
+                    if (object_unread_ids.find(object_id) != object_unread_ids.end())
                     {
-                        req.blocks[block_id] = 1;
-                        object_unread_requestid_block_count[request_id]++;
-                    }
-
-                    if (object_unread_requestid_block_count[request_id] == req.blocks.size())
-                    {
-                        object_read_sucess_ids.push_back(request_id);
-                        this->request_success_num++;
-
-                        // 删除对应链表节点和映射
-                        read_request_list.erase(it->second);
-                        object_request_iters.erase(it);
-                        object_unread_requestid_block_count.erase(request_id);
-                    }
-                }
-
-                // 清理无效 request_id（成功读取后已删除）
-                request_ids.erase(
-                    std::remove_if(
-                        request_ids.begin(),
-                        request_ids.end(),
-                        [&](int id)
+                        vector<int> &request_ids = object_unread_ids.at(object_id);
+                        for (auto &request_id : request_ids)
                         {
-                            return object_request_iters.find(id) == object_request_iters.end();
-                        }),
-                    request_ids.end());
+                            auto it = object_request_iters.find(request_id);
+                            if (it == object_request_iters.end())
+                                continue;
+
+                            ReadRequest &req = *(it->second);
+                            if (req.blocks[block_id] == 0)
+                            {
+                                req.blocks[block_id] = 1;
+                                object_unread_requestid_block_count[request_id]++;
+                            }
+
+                            if (object_unread_requestid_block_count[request_id] == req.blocks.size())
+                            {
+                                object_read_sucess_ids.push_back(request_id);
+                                this->request_success_num++;
+
+                                // 删除对应链表节点和映射
+                                read_request_list.erase(it->second);
+                                object_request_iters.erase(it);
+                                object_unread_requestid_block_count.erase(request_id);
+                            }
+                        }
+
+                        // 清理无效 request_id（成功读取后已删除）
+                        request_ids.erase(
+                            std::remove_if(
+                                request_ids.begin(),
+                                request_ids.end(),
+                                [&](int id)
+                                {
+                                    return object_request_iters.find(id) == object_request_iters.end();
+                                }),
+                            request_ids.end());
                     }
                 }
                 disks[disk_id].head = (disks[disk_id].head + 1) % num_v;
