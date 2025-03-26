@@ -16,8 +16,6 @@ using namespace std;
 #include <thread>
 #include <mutex>
 #include <list>
-#include <future>
-#include <utility>
 
 #define REP_NUM (3)
 struct ReadRequest;
