@@ -163,7 +163,7 @@ void Controller::read_action()
 
     if (n_read > 30)
     {
-        if (read_frequence <= 30)
+        if (read_frequence <= 25)
         {
             read_frequence++;
         }
@@ -297,7 +297,7 @@ Partition &Controller::get_partition(int tag, int size)
 
 WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, vector<vector<Block *>> &p_blocks)
 {
-    //Partition &partition = get_partition(tag, size);
+    // Partition &partition = get_partition(tag, size);
     p_blocks.resize(REP_NUM);
     for (int i = 0; i < REP_NUM; i++)
     {
@@ -320,85 +320,71 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
         indexs[i].resize(size);
     }
 
+    // 根据文件大小划分小文件和大文件
+    // 小文件: size == 1, 大文件: size > 1
+    int file_category = (size == 1) ? 0 : 1;
+
+    // 在每个tag区域中划分不同的区域存放不同大小的文件
     for (int i = 0; i < REP_NUM; i++)
     {
         int disk_id = disk_pair_ids[i].first;
-        // bool allocated = false;
-        // // 判断是否具有连续的存储空间
-        // for (int j = tag * ((num_v) / num_tag);; j = (j + 1) % (num_v - 1))
-        // {
-        //     bool is_continuous = true;
-        //     for (int k = 0; k < size; k++)
-        //     {
-        //         if (disks[disk_id].units[(j + k) % (num_v - 1)] != nullptr)
-        //         {
-        //             is_continuous = false;
-        //             break;
-        //         }
-        //     }
+        bool allocated = false;
 
-        //     if (is_continuous)
-        //     {
-        //         for (int k = tag * ((num_v) / num_tag);; k = (k + 1) % (num_v - 1))
-        //         {
-        //             indexs[i][k] = j + k;
-        //             p_blocks[i][k] = write_block_to_disk(disk_id, j + k, object_id, k);
-        //             if ((k + 1) % (num_v - 1) == tag * (num_v / num_tag))
-        //             {
-        //                 break;
-        //             }
-        //         }
-        //         allocated = true;
-        //         break;
-        //     }
-        //     if ((j + 1) % (num_v - 1) == tag * (num_v / num_tag))
-        //     {
-        //         break;
-        //     }
-        // }
+        // 选择对应的开始索引，按文件分类
+        // 小文件区域更小，占四分之一
+        int start_index = tag * ((num_v) / num_tag) + file_category * (num_v / (num_tag * 6));
 
-        // if (!allocated)
-        // {
+        // 判断是否具有连续的存储空间
+        for (int j = start_index;; j = (j + 1) % (num_v - 1))
+        {
+            bool is_continuous = true;
+            for (int k = 0; k < size; k++)
+            {
+                if (disks[disk_id].units[(j + k) % (num_v - 1)] != nullptr)
+                {
+                    is_continuous = false;
+                    break;
+                }
+            }
+
+            if (is_continuous)
+            {
+                for (int k = 0; k < size; k++)
+                {
+                    indexs[i][k] = j + k;
+                    p_blocks[i][k] = write_block_to_disk(disk_id, j + k, object_id, k);
+                }
+                allocated = true;
+                break;
+            }
+            if ((j + 1) % (num_v - 1) == start_index)
+            {
+                break;
+            }
+        }
+
+        if (!allocated)
+        {
             int count = size;
-            for (int j = tag * ((num_v) / num_tag);; j = (j + 1) % (num_v - 1))
+            for (int j = start_index;; j = (j + 1) % (num_v - 1))
             {
                 if (!count)
                 {
                     break;
                 }
-                // throw std::runtime_error(to_string(disk_id));
                 if (disks[disk_id].units[j] == nullptr)
                 {
                     indexs[i][size - count] = j;
                     p_blocks[i][size - count] = write_block_to_disk(disk_id, j, object_id, size - count);
                     count--;
                 }
-                if ((j + 1) % (num_v - 1) == tag * (num_v / num_tag))
+                if ((j + 1) % (num_v - 1) == start_index)
                 {
                     break;
                 }
             }
-        // }
+        }
     }
-    // for (int i = 0; i < REP_NUM; i++)
-    // {
-    //     int disk_id = disk_pair_ids[i].first;
-    //     int count = size;
-    //     for (int j = 0; j < num_v; j++)
-    //     {
-    //         if (!count)
-    //         {
-    //             break;
-    //         }
-    //         // throw std::runtime_error(to_string(disk_id));
-    //         if (disks[disk_id].units[j] == nullptr)
-    //         {
-    //             indexs[i][size - count] = j;
-    //             p_blocks[i][size - count] = write_block_to_disk(disk_id, j, object_id, size - count);
-    //             count--;
-    //         }
-    //     }
-    // }
 
     vector<int> disk_ids;
 
@@ -409,6 +395,8 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
 
     return WriteResult(disk_ids, indexs);
 }
+
+
 
 bool Controller::delete_object_from_disk(int object_id)
 {
