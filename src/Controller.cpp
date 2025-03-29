@@ -323,42 +323,38 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
     for (int i = 0; i < REP_NUM; i++)
     {
         int disk_id = disk_pair_ids[i].first;
-        // bool allocated = false;
-        // // 判断是否具有连续的存储空间
-        // for (int j = tag * ((num_v) / num_tag);; j = (j + 1) % (num_v - 1))
-        // {
-        //     bool is_continuous = true;
-        //     for (int k = 0; k < size; k++)
-        //     {
-        //         if (disks[disk_id].units[(j + k) % (num_v - 1)] != nullptr)
-        //         {
-        //             is_continuous = false;
-        //             break;
-        //         }
-        //     }
+        bool allocated = false;
+        // 判断是否具有连续的存储空间
+        for (int j = tag * ((num_v) / num_tag);; j = (j + 1) % (num_v - 1))
+        {
+            bool is_continuous = true;
+            for (int k = 0; k < size; k++)
+            {
+                if (disks[disk_id].units[(j + k) % (num_v - 1)] != nullptr)
+                {
+                    is_continuous = false;
+                    break;
+                }
+            }
 
-        //     if (is_continuous)
-        //     {
-        //         for (int k = tag * ((num_v) / num_tag);; k = (k + 1) % (num_v - 1))
-        //         {
-        //             indexs[i][k] = j + k;
-        //             p_blocks[i][k] = write_block_to_disk(disk_id, j + k, object_id, k);
-        //             if ((k + 1) % (num_v - 1) == tag * (num_v / num_tag))
-        //             {
-        //                 break;
-        //             }
-        //         }
-        //         allocated = true;
-        //         break;
-        //     }
-        //     if ((j + 1) % (num_v - 1) == tag * (num_v / num_tag))
-        //     {
-        //         break;
-        //     }
-        // }
+            if (is_continuous)
+            {
+                for (int k = 0; k < size; k++)
+                {
+                    indexs[i][k] = j + k;
+                    p_blocks[i][k] = write_block_to_disk(disk_id, j + k, object_id, k);
+                }
+                allocated = true;
+                break;
+            }
+            if ((j + 1) % (num_v - 1) == tag * (num_v / num_tag))
+            {
+                break;
+            }
+        }
 
-        // if (!allocated)
-        // {
+        if (!allocated)
+        {
             int count = size;
             for (int j = tag * ((num_v) / num_tag);; j = (j + 1) % (num_v - 1))
             {
@@ -378,7 +374,7 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
                     break;
                 }
             }
-        // }
+         }
     }
     // for (int i = 0; i < REP_NUM; i++)
     // {
