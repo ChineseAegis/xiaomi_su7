@@ -403,6 +403,8 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
 
         if (!allocated)
         {
+        if (!allocated)
+        {
             int count = size;
             for (int j = start_index;; j = (j + 1) % (num_v - 1))
             {
