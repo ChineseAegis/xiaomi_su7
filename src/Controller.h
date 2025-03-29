@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "Action_queue.h"
+#include <numeric>
 
 using namespace std;
 
@@ -90,9 +91,12 @@ public:
     
 
     // 记录每个阶段的该类指令涉及的块总大小
-    vector<int> num_delete_operation;
-    vector<int> num_write_operation;
-    vector<int> num_read_operation;
+    vector<vector<int>> num_delete_operation;
+    vector<vector<int>> num_write_operation;
+    vector<vector<int>> num_read_operation;
+
+    vector<vector<double>> proportions;
+    vector<vector<double>> cumulative_proportions;
 
     vector<Action_queue> disk_actions; // 硬盘指令队列，总共N个硬盘，就有N个队列，每个元素是一个时间片下所有指令的字符串
 
