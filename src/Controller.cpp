@@ -6,40 +6,76 @@ void Controller::global_pre_proccess()
 {
     scanf("%d%d%d%d%d", &num_T, &num_tag, &num_disk, &num_v, &G);
 
+    num_delete_operation.resize(num_tag);
+    num_write_operation.resize(num_tag);
+    num_read_operation.resize(num_tag);
+
+    proportions.resize((num_T-1)/FRE_PER_SLICING+ 1);
+    cumulative_proportions.resize((num_T-1)/FRE_PER_SLICING+ 1);
+
     for (int i = 0; i < num_disk; i++)
     {
         disks.push_back(Disk(num_v, i));
     }
-
-    for (int i = 1; i <= num_tag; i++)
+    
+    for (int i = 0; i < num_tag; i++)
     {
         for (int j = 1; j <= (num_T - 1) / FRE_PER_SLICING + 1; j++)
         {
             int num;
             scanf("%d", &num);
-            num_delete_operation.push_back(num);
+            num_delete_operation[i].push_back(num);
         }
     }
-
-    for (int i = 1; i <= num_tag; i++)
+    
+    for (int i = 0; i < num_tag; i++)
     {
         for (int j = 1; j <= (num_T - 1) / FRE_PER_SLICING + 1; j++)
         {
             int num;
             scanf("%d", &num);
-            num_write_operation.push_back(num);
+            num_write_operation[i].push_back(num);
         }
     }
 
-    for (int i = 1; i <= num_tag; i++)
+    for (int i = 0; i < num_tag; i++)
     {
         for (int j = 1; j <= (num_T - 1) / FRE_PER_SLICING + 1; j++)
         {
             int num;
             scanf("%d", &num);
-            num_read_operation.push_back(num);
+            num_read_operation[i].push_back(num);
         }
     }
+
+    vector<int> inner_sums;
+    
+    for(int i=0;i<(num_T-1)/FRE_PER_SLICING+ 1;i++)
+    {
+        int total=0;
+        for(int j=0;j<num_tag;j++)
+        {
+            total+=num_write_operation[j][i];
+        }
+        inner_sums.push_back(total);
+        for(int j=0;j<num_tag;j++)
+        {
+            proportions[i].push_back(static_cast<double>(num_write_operation[j][i]) / static_cast<double>(total));
+        }
+    }
+    //throw runtime_error("test");
+
+    
+    for (int i = 0; i < (num_T-1)/FRE_PER_SLICING+ 1; i++)
+    {
+        double cumulative = 0.0;
+        for (int j=0;j<num_tag;j++)
+        {
+            cumulative += proportions[i][j];
+            cumulative_proportions[i].push_back(cumulative);
+        }
+    }
+
     num_T += EXTRA_TIME;
     printf("OK\n");
     fflush(stdout);
@@ -332,6 +368,8 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
 
         // 选择对应的开始索引，按文件分类
         // 小文件区域更小，占四分之一
+        int m=(current_time)/FRE_PER_SLICING;
+        //int start_index = (int)(num_v * (cumulative_proportions[m][tag] - proportions[m][tag]) + file_category * (num_v / (num_tag * 6)))%(num_v-1);
         int start_index = tag * ((num_v) / num_tag) + file_category * (num_v / (num_tag * 6));
 
         // 判断是否具有连续的存储空间
@@ -395,8 +433,6 @@ WriteResult Controller::write_object_to_disk(int object_id, int size, int tag, v
 
     return WriteResult(disk_ids, indexs);
 }
-
-
 
 bool Controller::delete_object_from_disk(int object_id)
 {
