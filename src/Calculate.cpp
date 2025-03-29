@@ -345,7 +345,7 @@ int Calculate::calculate_actions(int head_index, deque<int> &read_queue_indexs, 
             current_time++;
             action_queue.add_read_action(1);
         }
-        head_index = read_queue_indexs[i] + 1;
+        head_index = (read_queue_indexs[i] + 1)%num_v;
     }
     for (int i = 0; i < n; i++)
     {
